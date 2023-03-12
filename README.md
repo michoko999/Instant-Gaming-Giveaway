@@ -23,7 +23,7 @@ The script supports four different languages (French, English, Spanish, German) 
   Start the 2-setup.bat
 
 3) Run Giveaway_IG.py
-  In the terminal do the command :
+In the terminal do the command :
 
 ```bash
   python Giveaway_IG.py
