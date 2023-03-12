@@ -17,13 +17,13 @@ The script supports four different languages (French, English, Spanish, German) 
 ## 🛠️ Installation
 
 1) Install the latest version of Python
-Start the 1-install-python.bat
+  Start the 1-install-python.bat
 
 2) Install the keyboard library
-Start the 2-setup.bat
+  Start the 2-setup.bat
 
 3) Run Giveaway_IG.py
-In the terminal do the command :
+  In the terminal do the command :
 
 ```bash
   python Giveaway_IG.py
