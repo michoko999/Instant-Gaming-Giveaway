@@ -1,7 +1,5 @@
 @echo off
-setlocal
-
-REM Installation de keyboard
+echo Installation de la bibliothèque keyboard de Python ...
 pip install keyboard
-
-echo Installation terminée !
+echo Installation terminée.
+pause
