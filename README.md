@@ -18,9 +18,9 @@ The script supports four different languages (French, English, Spanish, German) 
 
 1) Install the latest version of Python
 
-2) Install the keyboard library
+2) Install the keyboard library - In the terminal do the command :
 ```
-  pip install keyboard - In the terminal do the command :
+  pip install keyboard
 ```
 
 3) Run Giveaway_IG.py - In the terminal do the command :
