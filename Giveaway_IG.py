@@ -1,23 +1,93 @@
-# Version: 1.02
+# Version: 1.03
 # Auteur: Michoko, Ourson
-# Date: 18/02/2023
+# Date de création : 18/02/2023
+# https://github.com/michoko999
 
+import random
+import os 
 import csv
 import time
 import webbrowser
 import keyboard
 
-lang = input("Language : (fr/en/es/de) :")
+def clear():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+clear()
+
+ascii_arts = [
+    r"""
+
+                                                                                     
+     _/      _/       _/                    _/                       _/                
+    _/_/  _/_/                 _/_/_/      _/_/_/        _/_/       _/  _/       _/_/    
+   _/  _/  _/       _/      _/            _/    _/    _/    _/     _/_/       _/    _/   
+  _/      _/       _/      _/            _/    _/    _/    _/     _/  _/     _/    _/    
+ _/      _/       _/        _/_/_/      _/    _/      _/_/       _/    _/     _/_/  and Ourson""",       
+    r"""
+ ::::    ::::  :::::::::::  ::::::::  :::    :::  ::::::::  :::    :::  ::::::::  
+ +:+:+: :+:+:+     :+:     :+:    :+: :+:    :+: :+:    :+: :+:   :+:  :+:    :+: 
+ +:+ +:+:+ +:+     +:+     +:+        +:+    +:+ +:+    +:+ +:+  +:+   +:+    +:+ 
+ +#+  +:+  +#+     +#+     +#+        +#++:++#++ +#+    +:+ +#++:++    +#+    +:+ 
+ +#+       +#+     +#+     +#+        +#+    +#+ +#+    +#+ +#+  +#+   +#+    +#+ 
+ #+#       #+#     #+#     #+#    #+# #+#    #+# #+#    #+# #+#   #+#  #+#    #+# 
+ ###       ### ###########  ########  ###    ###  ########  ###    ###  ######## and Ourson """, 
+    r"""
+ .::       .::                            .::               
+ .: .::   .::: .:       .::               .::               
+ .:: .:: . .::      .:::.::        .::    .::  .::   .::     
+ .::  .::  .::.:: .::   .: .:    .::  .:: .:: .::  .::  .:: 
+ .::   .:  .::.::.::    .::  .::.::    .::.:.::   .::    .::
+ .::       .::.:: .::   .:   .:: .::  .:: .:: .::  .::  .:: 
+ .::       .::.::   .:::.::  .::   .::    .::  .::   .::  and Ourson""",    
+    r"""
+ 888b     d888 d8b          888               888               
+ 8888b   d8888 Y8P          888               888               
+ 88888b.d88888              888               888                
+ 888Y88888P888 888  .d8888b 88888b.   .d88b.  888  888  .d88b.  
+ 888 Y888P 888 888 d88P     888  88b d88  88b 888 .88P d88  88b 
+ 888  Y8P  888 888 888      888  888 888  888 888888K  888  888 
+ 888       888 888 Y88b.    888  888 Y88..88P 888  88b Y88..88P 
+ 888       888 888   Y8888P 888  888   Y88P   888  888   Y88P  and Ourson""",
+r"""
+      ___                        ___           ___           ___           ___           ___     
+     /  /\           ___        /  /\         /  /\         /  /\         /  /\         /  /\     
+    /  /::|         /__/\      /  /::\       /  /:/        /  /::\       /  /:/        /  /::\   
+   /  /:|:|         \__\:\    /  /:/\:\     /  /:/        /  /:/\:\     /  /:/        /  /:/\:\  
+  /  /:/|:|__       /  /::\  /  /:/  \:\   /  /::\ ___   /  /:/  \:\   /  /::\____   /  /:/  \:\ 
+ /__/:/_|::::\   __/  /:/\/ /__/:/ \  \:\ /__/:/\:\  /\ /__/:/ \__\:\ /__/:/\:::::\ /__/:/ \__\:\
+ \__\/  /~~/:/  /__/\/:/~~  \  \:\  \__\/ \__\/  \:\/:/ \  \:\ /  /:/ \__\/~|:|~~~~ \  \:\ /  /:/
+       /  /:/   \  \::/      \  \:\            \__\::/   \  \:\  /:/     |  |:|      \  \:\  /:/ 
+      /  /:/     \  \:\       \  \:\           /  /:/     \  \:\/:/      |  |:|       \  \:\/:/  
+     /__/:/       \__\/        \  \:\         /__/:/       \  \::/       |__|:|        \  \::/   
+     \__\/                      \__\/         \__\/         \__\/         \__\|         \__\/   and Ourson   
+""",
+r"""
+ ███▄ ▄███▓ ██▓ ▄████▄   ██░ ██  ▒█████   ██ ▄█▀ ▒█████   
+▓██▒▀█▀ ██▒▓██▒▒██▀ ▀█  ▓██░ ██▒▒██▒  ██▒ ██▄█▒ ▒██▒  ██▒
+▓██    ▓██░▒██▒▒▓█    ▄ ▒██▀▀██░▒██░  ██▒▓███▄░ ▒██░  ██▒
+▒██    ▒██ ░██░▒▓▓▄ ▄██▒░▓█ ░██ ▒██   ██░▓██ █▄ ▒██   ██░
+▒██▒   ░██▒░██░▒ ▓███▀ ░░▓█▒░██▓░ ████▓▒░▒██▒ █▄░ ████▓▒░  and Ourson
+░ ▒░   ░  ░░▓  ░ ░▒ ▒  ░ ▒ ░░▒░▒░ ▒░▒░▒░ ▒ ▒▒ ▓▒░ ▒░▒░▒░ 
+░  ░      ░ ▒ ░  ░  ▒    ▒ ░▒░ ░  ░ ▒ ▒░ ░ ░▒ ▒░  ░ ▒ ▒░ 
+░      ░    ▒ ░░         ░  ░░ ░░ ░ ░ ▒  ░ ░░ ░ ░ ░ ░ ▒  
+       ░    ░  ░ ░       ░  ░  ░    ░ ░  ░  ░       ░ ░  
+               ░                                         
+"""
+]                                                               
+
+# Sélectionne un ASCII art aléatoire
+ascii_art = random.choice(ascii_arts)
+
+# Affiche l'ASCII art
+print(ascii_art)
+
+print(" ")
+lang = input("Language : (fr/en/es/de) :")      
+print(" ")                                              
 
 if lang == "fr":
-    print(" ")
-    print("#-------------------------#")
-    print("# Auteur: Michoko, Ourson #")
-    print("# Date: 18/02/2023        #")
-    print("# ------------------------#")
-    print(" ")
-    
-    nom_du_fichier = (input("Entrez le nom du fichier: "))
+    nom_du_fichier = (input("Entrez la liste (avec l'extension du fichier en .csv): "))
     print(" ")
     while True:
         try:
@@ -28,13 +98,7 @@ if lang == "fr":
             print(" ")
 
 elif lang == "es":
-    print(" ")
-    print("# ------------------------#")
-    print("# Autor: Michoko, Ourson  #")
-    print("# Fecha: Fecha: 18/02/2023#")
-    print("# ------------------------#")
-    print(" ")
-    nom_du_fichier = (input("Ingrese el nombre del archivo (con la extensión del archivo):"))
+    nom_du_fichier = (input("Ingrese a la lista (con la extensión de archivo en .csv):"))
     print(" ")
     while True:
         try:
@@ -45,13 +109,7 @@ elif lang == "es":
             print(" ")
 
 elif lang == "en":
-    print(" ")
-    print("# ------------------------#")
-    print("# Autor: Michoko, Ourson  #")
-    print("# Date: 02/18/2023        #")
-    print("# ------------------------#")
-    print(" ")
-    nom_du_fichier = (input("Enter the file name (with file extension):"))
+    nom_du_fichier = (input("Enter the list (with the file extension in .csv):"))
     print(" ")
     while True:
         try:
@@ -62,13 +120,7 @@ elif lang == "en":
             print(" ")
 
 elif lang == "de":
-    print(" ")
-    print("# ------------------------#")
-    print("# Autor: Michoko, Ourson  #")
-    print("# Datum: 18.02.2023       #")
-    print("# ------------------------#")
-    print(" ")
-    nom_du_fichier = (input("Geben Sie den Dateinamen (mit Dateiendung) ein:"))
+    nom_du_fichier = (input("Geben Sie die Liste ein (mit der Dateierweiterung in .csv):"))
     print(" ")
     while True:
         try:
@@ -83,6 +135,93 @@ else:
     print("Language is not supported.")
     print(" ")
 
+def demander_preparation(lang):
+    if lang == "fr":
+        while True:
+            print(" ")
+            reponse = input("Êtes-vous prêt à commencer ? (Oui/Non) ")
+            reponse = reponse.lower()
+            if reponse == "oui":
+                return True
+            elif reponse == "non":
+                explications(lang)
+                continue
+            else:
+                print("Réponse invalide. Veuillez répondre par 'Oui' ou 'Non'.")
+
+    elif lang == "es":
+        while True:
+            print(" ")
+            reponse = input("¿Estás listo para comenzar? (Sí/No) ")
+            reponse = reponse.lower()
+            if reponse == "sí":
+                return True
+            elif reponse == "no":
+                explications(lang)
+                continue
+            else:
+                print("Respuesta inválida. Por favor, responde con 'Sí' o 'No'.")
+
+    elif lang == "en":
+        while True:
+            print(" ")
+            reponse = input("Are you ready to start? (Yes/No) ")
+            reponse = reponse.lower()
+            if reponse == "yes":
+                return True
+            elif reponse == "no":
+                explications(lang)
+                continue
+            else:
+                print("Invalid response. Please answer with 'Yes' or 'No'.")
+
+    elif lang == "de":
+        while True:
+            print(" ")
+            reponse = input("Bist du bereit zu starten? (Ja/Nein) ")
+            reponse = reponse.lower()
+            if reponse == "ja":
+                return True
+            elif reponse == "nein":
+                explications(lang)
+                continue
+            else:
+                print("Ungültige Antwort. Bitte antworte mit 'Ja' oder 'Nein'.")
+
+    else:
+        
+        print("Language is not supported.")
+        return False
+
+def explications(lang):
+    if lang == "fr":
+        print(" ")
+        print("Voici quelques explications sur la suite du processus :")
+        print("Le programme va commencer a ouvrir les pages une par une avec les concours, il faudra juste cliquer sur le bouton orange a centre de l'écran avec écrit 'Participer' ")
+        # Ajoutez ici les explications supplémentaires en français
+    elif lang == "es":
+        print(" ")
+        print("Aquí hay algunas explicaciones sobre el resto del proceso:")
+        print("El programa comenzará a abrir las páginas una por una con los concursos, solo debes hacer clic en el botón naranja en el centro de la pantalla con la escritura 'Participar'")
+        # Ajoutez ici les explications supplémentaires en espagnol
+    elif lang == "en":
+        print(" ")
+        print("Here are some explanations on the rest of the process:")
+        print("The program will start to open the pages one by one with the competitions, you just have to click on the orange button in the center of the screen with the writing 'Participate'")
+        # Ajoutez ici les explications supplémentaires en anglais
+    elif lang == "de":
+        print(" ")
+        print("Hier einige Erläuterungen zum weiteren Ablauf:")
+        print("Das Programm beginnt, die Seiten nacheinander mit den Wettbewerben zu öffnen. Sie müssen lediglich auf die orangefarbene Schaltfläche in der Mitte des Bildschirms mit der Aufschrift „Teilnehmen“ klicken.")
+        # Ajoutez ici les explications supplémentaires en allemand
+
+# Appel de la fonction pour demander la préparation
+if demander_preparation(lang):
+    # L'utilisateur est prêt, continuez avec le reste du programme
+    # Ajoutez ici le code que vous souhaitez exécuter lorsque l'utilisateur est prêt
+    print(" ")
+    print("Début du programme...")
+time.sleep(3)
 # Ouvrir le fichier CSV et stocker les URLs dans une liste
 filename = nom_du_fichier
 urls = []
