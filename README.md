@@ -13,7 +13,7 @@ This is intended for people who participate or want to participate in the Instan
 
 The script supports four different languages (French, English, Spanish, German) to facilitate its use by users around the world.
 
-![Demonstration](https://imgur.com/a/q0Rx124)
+![Demonstration](https://i.imgur.com/bRdHCNm.gif)
 
 ## 🛠️ Installation
 
