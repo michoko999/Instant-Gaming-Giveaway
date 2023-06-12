@@ -13,7 +13,7 @@ This is intended for people who participate or want to participate in the Instan
 
 The script supports four different languages (French, English, Spanish, German) to facilitate its use by users around the world.
 
-![Demonstration] (https://media.discordapp.net/attachments/904401477412487180/1117853058970419331/Github_gif_1.gif)
+![Demonstration](https://media.discordapp.net/attachments/904401477412487180/1117853058970419331/Github_gif_1.gif)
 
 ## 🛠️ Installation
 
