@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Version: 1.03
 # Auteur: Michoko, Ourson
 # Date de création 18/02/2023
