@@ -1,6 +1,6 @@
 # Version: 1.03
 # Auteur: Michoko, Ourson
-# Date de création : 18/02/2023
+# Date de création 18/02/2023
 # https://github.com/michoko999
 
 import random
