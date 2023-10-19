@@ -15,7 +15,7 @@ The script supports four different languages (French, English, Spanish, German) 
 
 ![Demonstration](https://i.imgur.com/bRdHCNm.gif)
 
-## 🛠️ Installation
+## 🛠️ Installation [Python]
 
 1) Install the latest version of Python
 
