@@ -17,15 +17,18 @@ The script supports four different languages (French, English, Spanish, German) 
 
 ## 🛠️ Installation [Python]
 
-1) Install the latest version of Python
-
-2) Download the libraries - In the terminal do the command :
+1) Download the libraries
+   
+ Execute install library.bat
+ or do the command below in a terminal: 
 ```
   pip install -r requirements.txt
 ```
 
-3) Run Giveaway_IG.py - In the terminal do the command :
-
+2) Run Giveaway_IG.py
+   
+ Execute run.bat
+ or do the command below in a terminal:
 ```bash
   python Giveaway_IG.py
 ```
