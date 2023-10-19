@@ -36,7 +36,7 @@ Run Giveaway_IG.exe and enjoy :)
 ```bash
   python Giveaway_IG.py
 ```
-    
-## 🔗 Links
 
+## 🔗 Links
+[![Twitch](https://img.shields.io/badge/Twitch-9146FF?style=for-the-badge&logo=twitch&logoColor=white)](https://www.twitch.tv/michoko)
 [![BuyMeACoffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/michoko)
