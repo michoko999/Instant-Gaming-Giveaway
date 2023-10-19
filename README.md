@@ -15,6 +15,10 @@ The script supports four different languages (French, English, Spanish, German) 
 
 ![Demonstration](https://i.imgur.com/bRdHCNm.gif)
 
+## 🛠️ Installation [Windows]
+
+Run Giveaway_IG.exe and enjoy :)
+
 ## 🛠️ Installation [Python]
 
 1) Download the libraries
