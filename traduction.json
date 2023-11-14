@@ -1,0 +1,55 @@
+{
+    "fr": {
+        "csv_file_name": "Entrez la liste (avec l'extension du fichier en .csv): ",
+        "seconds_per_url": "Entrez le temps en secondes entre chaque ouverture d'URL : ",
+        "errortype": "Veuillez entrer un nombre entier pour le temps en secondes.",
+        "erroranswer": "Réponse invalide. Veuillez répondre par 'Oui' ou 'Non'.",
+        "errorfile": "Fichier introuvable. Vérifiez que le fichier est bien dans le même dossier que le programme et que vous avez bien entré le nom du fichier avec l'extension.",
+        "reponse": "Êtes-vous prêt à commencer ? (Oui/Non) ",
+        "yes": "Oui",
+        "no": "Non",
+        "explications": "Voici quelques explications sur la suite du processus : \nLe programme va commencer a ouvrir les pages une par une avec les concours, il faudra juste cliquer sur le bouton orange a centre de l'écran avec écrit 'Participer'",
+        "begin": "Début du programme...",
+        "endmessage": "{} URLs ont été ouvertes en environ {} secondes."
+    },
+    "en": {
+        "csv_file_name": "Enter the list (with the file extension in .csv): ",
+        "seconds_per_url": "Enter the time in seconds between each URL opening: ",
+        "errortype": "Please enter an integer for the time in seconds.",
+        "erroranswer": "Invalid response. Please answer with 'Yes' or 'No'.",
+        "errorfile": "File not found. Make sure the file is in the same folder as the program and that you have entered the file name with the extension.",
+        "errorlang": "Invalid language. English is selected by default.",
+        "reponse": "Are you ready to start? (Yes/No) ",
+        "yes": "Yes",
+        "no": "No",
+        "explications": "Here are some explanations on the rest of the process: \nThe program will start to open the pages one by one with the competitions, you just have to click on the orange button in the center of the screen with the writing 'Participate'",
+        "begin": "Start of the program...",
+        "endmessage": "{} URLs were opened in approximately {} seconds."
+    },
+    "es": {
+        "csv_file_name": "Ingrese a la lista (con la extensión de archivo en .csv): ",
+        "seconds_per_url": "Ingrese el tiempo en segundos entre cada apertura de URL: ",
+        "errortype": "Introduzca un número entero para el tiempo en segundos.",
+        "erroranswer": "Respuesta inválida. Por favor, responde con 'Sí' o 'No'.",
+        "errorfile": "Archivo no encontrado. Asegúrese de que el archivo esté en la misma carpeta que el programa y de que haya ingresado el nombre del archivo con la extensión.",
+        "reponse": "¿Estás listo para comenzar? (Sí/No) ",
+        "yes": "Sí",
+        "no": "No",
+        "explications": "Aquí hay algunas explicaciones sobre el resto del proceso: \nEl programa comenzará a abrir las páginas una por una con los concursos, solo debes hacer clic en el botón naranja en el centro de la pantalla con la escritura 'Participar'",
+        "begin": "Inicio del programa...",
+        "endmessage": "Se abrieron {} URL en aproximadamente {} segundos."
+    },
+    "de": {
+        "csv_file_name": "Geben Sie die Liste ein (mit der Dateierweiterung in .csv): ",
+        "seconds_per_url": "Geben Sie die Zeit in Sekunden zwischen jedem URL-Öffnen ein: ",
+        "errortype": "Bitte geben Sie eine Ganzzahl für die Zeit in Sekunden ein.",
+        "erroranswer": "Ungültige Antwort. Bitte antworte mit 'Ja' oder 'Nein'.",
+        "errorfile": "Datei nicht gefunden. Stellen Sie sicher, dass sich die Datei im selben Ordner wie das Programm befindet und dass Sie den Dateinamen mit der Erweiterung eingegeben haben.",
+        "reponse": "Bist du bereit zu starten? (Ja/Nein) ",
+        "yes": "Ja",
+        "no": "Nein",
+        "explications": "Hier einige Erläuterungen zum weiteren Ablauf: \nDas Programm beginnt, die Seiten nacheinander mit den Wettbewerben zu öffnen. Sie müssen lediglich auf die orangefarbene Schaltfläche in der Mitte des Bildschirms mit der Aufschrift „Teilnehmen“ klicken.",
+        "begin": "Start des Programms...",
+        "endmessage": "{} URLs wurden in etwa {} Sekunden geöffnet."
+    }
+}
