@@ -1,9 +1,3 @@
-
-## ⚠️ Disclaimer
-
-This Python script was created for educational and demonstration purposes only. The author is in no way affiliated with Instant Gaming nor does it recommend the use of this script for any illegal or malicious purpose. The author will not be held responsible for any abusive or illegal use of this script. The use of this script is under the sole responsibility of the user.
-
-
 # Instant Gaming Giveaway
 
 
