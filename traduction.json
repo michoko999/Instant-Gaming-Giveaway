@@ -1,5 +1,11 @@
 {
     "fr": {
+        "valid_urls_message": "Tous les concours valides sont dans valid_urls.csv",
+        "errorfile": "Fichier non trouvé.",
+        "errorlang": "Choix de langue invalide. Passage à l'anglais par défaut.",
+        "seconds_per_url": "Entrez le nombre de secondes entre chaque vérification d'URL : ",
+        "errortype": "Entrée invalide. Veuillez entrer un nombre.",
+        "update_choice": "Voulez-vous mettre à jour les concours pour ne garder que les valides ? (yes/no) : ",
         "csv_file_name": "Entrez la liste (avec l'extension du fichier en .csv): ",
         "seconds_per_url": "Entrez le temps en secondes entre chaque ouverture d'URL : ",
         "errortype": "Veuillez entrer un nombre entier pour le temps en secondes.",
@@ -13,6 +19,12 @@
         "endmessage": "{} URLs ont été ouvertes en environ {} secondes."
     },
     "en": {
+        "valid_urls_message": "All valid giveaways are in valid_urls.csv",
+        "errorfile": "File not found.",
+        "errorlang": "Invalid language choice. Defaulting to English.",
+        "seconds_per_url": "Enter the number of seconds between each URL check: ",
+        "errortype": "Invalid input. Please enter a number.",
+        "update_choice": "Do you want to update the giveaways to only keep valid ones? (yes/no): ",
         "csv_file_name": "Enter the list (with the file extension in .csv): ",
         "seconds_per_url": "Enter the time in seconds between each URL opening: ",
         "errortype": "Please enter an integer for the time in seconds.",
@@ -27,6 +39,12 @@
         "endmessage": "{} URLs were opened in approximately {} seconds."
     },
     "es": {
+        "valid_urls_message": "Todos los concursos válidos están en valid_urls.csv",
+        "errorfile": "Archivo no encontrado.",
+        "errorlang": "Elección de idioma no válida. Cambiando al inglés de forma predeterminada.",
+        "seconds_per_url": "Ingrese la cantidad de segundos entre cada verificación de URL:",
+        "errortype": "Entrada no válida. Por favor ingrese un número.",
+        "update_choice": "¿Quieres actualizar los concursos para conservar solo los válidos? (yes/no):",
         "csv_file_name": "Ingrese a la lista (con la extensión de archivo en .csv): ",
         "seconds_per_url": "Ingrese el tiempo en segundos entre cada apertura de URL: ",
         "errortype": "Introduzca un número entero para el tiempo en segundos.",
@@ -40,6 +58,12 @@
         "endmessage": "Se abrieron {} URL en aproximadamente {} segundos."
     },
     "de": {
+        "valid_urls_message": "Alle gültigen Gewinnspiele sind in valid_urls.csv",
+        "errorfile": "Datei nicht gefunden.",
+        "errorlang": "Choix de langue invalide. Passage à l'anglais par défaut.",
+        "seconds_per_url": "Ungültige Sprachauswahl. Standardmäßig wird auf Englisch umgestellt.",
+        "errortype": "Ungültiger Eintrag. Bitte geben Sie eine Nummer ein.",
+        "update_choice": "Möchten Sie die Wettbewerbe aktualisieren, um nur die gültigen zu behalten? (yes/no):",
         "csv_file_name": "Geben Sie die Liste ein (mit der Dateierweiterung in .csv): ",
         "seconds_per_url": "Geben Sie die Zeit in Sekunden zwischen jedem URL-Öffnen ein: ",
         "errortype": "Bitte geben Sie eine Ganzzahl für die Zeit in Sekunden ein.",
