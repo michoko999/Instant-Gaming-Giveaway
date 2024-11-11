@@ -1,3 +1,2 @@
 keyboard
-pyautogui
 requests
