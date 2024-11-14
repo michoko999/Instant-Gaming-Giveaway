@@ -8,15 +8,33 @@
 # Date de modification: 13/11/2023
 
 
-import random
+import sys
 import os
 import json
 import csv
+import random
 import time
 import webbrowser
 import keyboard
 import requests
 
+# Chemin d'accès aux fichiers
+if hasattr(sys, '_MEIPASS'):
+    # Si le script est exécuté en .exe, utilise le dossier temporaire
+    fichier_traduction = os.path.join(sys._MEIPASS, 'traduction.json')
+    fichier_list_uncheck = os.path.join(sys._MEIPASS, 'List-Uncheck.csv')
+else:
+    # Si le script est exécuté en .py, utilise le chemin relatif normal
+    fichier_traduction = 'traduction.json'
+    fichier_list_uncheck = 'List-Uncheck.csv'
+
+# Ouvrir le fichier JSON avec encodage UTF-8
+with open(fichier_traduction, 'r', encoding='utf-8') as fichier:
+    translations = json.load(fichier)
+
+# Ouvrir le fichier CSV avec encodage UTF-8
+with open(fichier_list_uncheck, 'r', encoding='utf-8') as fichier:
+    csv_data = fichier.read()
 
 # Variables globales
 TRADPATH = "traduction.json"
@@ -71,8 +89,8 @@ r"""
 
 
 def load_translations(file_path):
-    with open(file_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    with open(file_path, 'r', encoding='utf-8') as fichier:
+        return json.load(fichier)
 
 
 def check_url(url):
@@ -96,11 +114,9 @@ def update_giveaways(csv_path, lang, translations):
     with open(csv_path, newline='', encoding='utf-8') as csvfile:
         reader = csv.reader(csvfile)
         urls = [row[0] for row in reader if row]  # Vérifie que la ligne n'est pas vide
-
     valid_urls = []
     invalid_urls = []
     unknown_urls = []
-
     for url in urls:
         status = check_url(url)
         if status == 'valid':
@@ -112,27 +128,23 @@ def update_giveaways(csv_path, lang, translations):
         else:
             unknown_urls.append(url)
             print(f"Unknown: {url}")
-
-        # Ajouter un délai aléatoire entre 250ms et 1500ms
-        delay = random.uniform(0.25, 1.5)
+        # Ajouter un délai aléatoire entre 200ms et 1000ms
+        delay = random.uniform(0.2, 1)
         time.sleep(delay)
-
     with open('valid_urls.csv', 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
         for url in valid_urls:
             writer.writerow([url])
-
     with open('invalid_urls.csv', 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
         for url in invalid_urls:
             writer.writerow([url])
-
     with open('unknown_urls.csv', 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
         for url in unknown_urls:
             writer.writerow([url])
-
     print(translations[lang]["valid_urls_message"])
+    return valid_urls
 
 
 def get_urls(lang: str, csv_path: str, translations) -> list:
@@ -141,18 +153,15 @@ def get_urls(lang: str, csv_path: str, translations) -> list:
     :param csv_path: Chemin vers le fichier csv
     :return: Liste contenant les urls
     """
-    try:
-        abs_path = os.path.abspath(__file__)
-        full_path = os.path.join(os.path.dirname(abs_path), csv_path)
-        urls = []
-        with open(full_path, "r", encoding="utf-8") as f:
-            reader = csv.reader(f)
-            for row in reader:
-                urls.append(row[0])
-        return urls
-    except FileNotFoundError:
-        print(translations[lang]["errorfile"])
+    if not os.path.isfile(csv_path):
+        print(f"Fichier introuvable: {csv_path}")
         return None
+
+    with open(csv_path, newline='', encoding='utf-8') as csvfile:
+        reader = csv.reader(csvfile)
+        urls = [row[0] for row in reader if row]  # Vérifie que la ligne n'est pas vide
+
+    return urls
 
 
 def get_lang(translations) -> str:
@@ -207,7 +216,7 @@ def main():
     os.system('cls' if os.name == 'nt' else 'clear')
 
     global translations
-    translations = load_translations('traduction.json')
+    translations = load_translations(fichier_traduction)
 
     ascii_art = random.choice(ASCII_LOGO)
     print(ascii_art + "\n")
@@ -215,11 +224,13 @@ def main():
     lang = get_lang(translations)
     update_choice = input("\n" + translations[lang]["update_choice"])
     if update_choice.lower() in ['yes', 'oui', 'y', 'o']:
-        update_giveaways('List-Uncheck.csv', lang, translations)
-    file_name = input("\n" + translations[lang]["csv_file_name"])
-    liste_urls = get_urls(lang, file_name, translations)
-    if liste_urls is None:
-        return
+        liste_urls = update_giveaways(fichier_list_uncheck, lang, translations)
+    else:
+        file_name = input("\n" + translations[lang]["csv_file_name"])
+        liste_urls = get_urls(lang, file_name, translations)
+        if liste_urls is None:
+            return
+
     seconds_between_urls = get_seconds_per_url(lang, translations)
     print("\n" + translations[lang]["explications"])
 
