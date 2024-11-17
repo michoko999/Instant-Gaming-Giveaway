@@ -1,7 +1,5 @@
 An automated Python script that helps you participate in Instant Gaming contests by periodically checking the contest list. Perfect for gamers who want to increase their chances of winning games!
 
-![Demonstration](https://i.imgur.com/bRdHCNm.gif)
-
 ## ✨ Features
 
 - 🌐 Supports multiple languages:
@@ -12,6 +10,10 @@ An automated Python script that helps you participate in Instant Gaming contests
 - ⏰ Customizable check intervals
 - 🖥️ Simple user interface
 - 💪 Lightweight and efficient
+- ✅ Smart contest validation:
+  - Automatically detects active contests
+  - Verifies contest availability
+  - Skips expired or invalid giveaways
 
 ## 🚀 Getting Started
 
@@ -76,6 +78,8 @@ Contributions are welcome! Feel free to:
 1. Fork the repository
 2. Create a feature branch
 3. Submit a pull request
+
+![Demonstration](https://i.imgur.com/bRdHCNm.gif)
 
 ## ⚠️ Disclaimer
 
