@@ -7,6 +7,9 @@ An automated Python script that helps you participate in Instant Gaming contests
   - French
   - Spanish
   - German
+  - Portuguese
+  - Italian
+  - Polish
 - ⏰ Customizable check intervals
 - 🖥️ Simple user interface
 - 💪 Lightweight and efficient
