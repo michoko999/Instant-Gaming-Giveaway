@@ -114,9 +114,6 @@ An automated Python script that helps you participate in Instant Gaming contests
     <a class="giveaway" href="https://www.instant-gaming.com/giveaway/INSTANTGAMING" target="_blank" rel="noreferrer">
         <img src="https://gaming-cdn.com/images/avatars/2700115-1699892940.jpg" alt="INSTANTGAMING" width="76" height="76" style="border-radius: 10px;" />
     </a>
-    <a class="giveaway" href="https://www.instant-gaming.com/giveaway/TOMBIE#" target="_blank" rel="noreferrer">
-        <img src="https://gaming-cdn.com/images/avatars/7276237-1585753188.jpg" alt="TOMBIE#" width="76" height="76" style="border-radius: 10px;" />
-    </a>
     <a class="giveaway" href="https://www.instant-gaming.com/giveaway/xariel" target="_blank" rel="noreferrer">
         <img src="https://gaming-cdn.com/images/avatars/767265-1595434670.jpg" alt="xariel" width="76" height="76" style="border-radius: 10px;" />
     </a>
