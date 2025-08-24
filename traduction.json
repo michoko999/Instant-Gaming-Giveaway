@@ -106,7 +106,7 @@
         "reponse": "Bist du bereit zu starten? (Ja/Nein) ",
         "yes": "Ja",
         "no": "Nein",
-        "explications": "Hier einige Erläuterungen zum weiteren Ablauf: \nDas Programm beginnt, die Seiten nacheinander mit den Wettbewerben zu öffnen. Sie müssen lediglich auf die orangefarbene Schaltfläche in der Mitte des Bildschirms mit der Aufschrift „Teilnehmen" klicken.",
+        "explications": "Hier einige Erläuterungen zum weiteren Ablauf: \nDas Programm beginnt, die Seiten nacheinander mit den Wettbewerben zu öffnen. Sie müssen lediglich auf die orangefarbene Schaltfläche in der Mitte des Bildschirms mit der Aufschrift \"Teilnehmen\" klicken.",
         "begin": "Start des Programms...",
         "endmessage": "{} URLs wurden in etwa {} Sekunden geöffnet."
     },
@@ -150,11 +150,11 @@
         "errortype": "Wprowadź liczbę całkowitą dla czasu w sekundach.",
         "update_choice": "Czy chcesz zaktualizować konkursy, aby zachować tylko ważne? (yes/no): ",
         "csv_file_name": "Wprowadź listę (z rozszerzeniem pliku .csv): ",
-        "erroranswer": "Nieprawidłowa odpowiedź. Proszę odpowiedzieć „Tak" lub „Nie".",
+        "erroranswer": "Nieprawidłowa odpowiedź. Proszę odpowiedzieć \"Tak\" lub \"Nie\".",
         "reponse": "Czy jesteś gotowy, aby zacząć? (Tak/Nie) ",
         "yes": "Tak",
         "no": "Nie",
-        "explications": "Oto kilka wyjaśnień dotyczących pozostałej części procesu: \nProgram zacznie otwierać strony jeden po drugim z konkursami, wystarczy kliknąć pomarańczowy przycisk na środku ekranu z napisem „Weź udział"",
+        "explications": "Oto kilka wyjaśnień dotyczących pozostałej części procesu: \nProgram zacznie otwierać strony jeden po drugim z konkursami, wystarczy kliknąć pomarańczowy przycisk na środku ekranu z napisem \"Weź udział\"",
         "begin": "Rozpoczęcie programu...",
         "endmessage": "{} adresy URL zostały otwarte w około {} sekund."
     }
