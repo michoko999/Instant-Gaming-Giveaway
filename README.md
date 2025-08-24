@@ -1,18 +1,24 @@
-An automated Python script that helps you participate in Instant Gaming contests by periodically checking the contest list. Perfect for gamers who want to increase their chances of winning games!
+# Instant Gaming Giveaway Tool
 
-## ✨ Features
+Un script Python automatisé qui vous aide à participer aux concours Instant Gaming en vérifiant périodiquement la liste des concours. Parfait pour les joueurs qui veulent augmenter leurs chances de gagner des jeux !
 
-- 🌐 **Supports multiple languages**:  
+## ✨ Fonctionnalités
+
+- 🌐 **Prend en charge plusieurs langues**:  
   🇬🇧 English | 🇫🇷 Français | 🇪🇸 Español | 🇩🇪 Deutsch | 🇵🇹 Português | 🇮🇹 Italiano | 🇵🇱 Polski
-- ⏰ Customizable check intervals
-- 🖥️ Simple user interface
-- 💪 Lightweight and efficient
-- ✅ Smart contest validation:
-  - Automatically detects active contests
-  - Verifies contest availability
-  - Skips expired or invalid giveaways
+- ⚡ **Vérification asynchrone des concours** - Plus rapide que jamais !
+- 🎨 **Interface colorée** - Visuellement plus agréable et informative
+- 📊 **Barre de progression** - Suivez l'avancement du processus
+- ⏰ **Intervalles de vérification personnalisables**
+- 🔄 **Sauvegarde des préférences** - Configuration persistante
+- 📝 **Historique des participations** - Gardez une trace de vos concours
+- 💪 **Robuste** - Meilleure gestion des erreurs
+- ✅ **Validation intelligente des concours**:
+  - Détecte automatiquement les concours actifs
+  - Vérifie la disponibilité des concours
+  - Ignore les concours expirés ou invalides
 
-## 🎁 Current Giveaways
+## 🎁 Concours actuels
 <p id="giveaways" align="left">
     <p align="left">
     <a class="giveaway" href="https://www.instant-gaming.com/giveaway/ICONOBLAST" target="_blank" rel="noreferrer">
@@ -325,80 +331,91 @@ An automated Python script that helps you participate in Instant Gaming contests
 
 </p>
 
-## 🚀 Getting Started
+## 🚀 Démarrage
 
-### Windows Users
+### Utilisateurs Windows
 
-1. Download the latest release
-2. Run `Giveaway_IG.exe`
-3. Follow the on-screen instructions
+1. Téléchargez la dernière version
+2. Exécutez `run.bat`
+3. Suivez les instructions à l'écran
 
-### Python Users
+### Utilisateurs Python
 
-#### Prerequisites
+#### Prérequis
 
-- Python 3.6 or higher
-- pip (Python package manager)
+- Python 3.6 ou supérieur
+- pip (gestionnaire de paquets Python)
 
 #### Installation
 
-1. Clone the repository:
+1. Clonez le dépôt:
 ```bash
 git clone https://github.com/yourusername/instant-gaming-giveaway.git
 cd instant-gaming-giveaway
 ```
 
-2. Install dependencies:
-   - Using the installer:
+2. Installez les dépendances:
+   - Avec l'installateur:
      ```bash
      install_library.bat
      ```
-   - Or manually via pip:
+   - Ou manuellement via pip:
      ```bash
      pip install -r requirements.txt
      ```
 
-#### Usage
+#### Utilisation
 
-1. Start the script:
-   - Using the batch file:
+1. Lancez le script:
+   - Avec le fichier batch:
      ```bash
      run.bat
      ```
-   - Or directly with Python:
+   - Ou directement avec Python:
      ```bash
      python Giveaway_IG.py
      ```
 
-2. Follow the prompts to:
-   - Select your preferred language
-   - Set the check interval
-   - Start monitoring giveaways
+2. Suivez les instructions pour:
+   - Sélectionner votre langue préférée
+   - Définir l'intervalle de vérification
+   - Commencer à surveiller les concours
 
 ## 📝 Configuration
 
-The script allows you to customize:
-- Check interval duration
-- Display language
-- Browser preferences
+Le script vous permet de personnaliser:
+- La durée de l'intervalle de vérification
+- La langue d'affichage
+- Les préférences du navigateur
+- Le fichier d'entrée
 
-## 🤝 Contributing
+Les préférences sont maintenant sauvegardées dans un fichier `config.ini` pour plus de commodité.
 
-Contributions are welcome! Feel free to:
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
+## 🔄 Nouveautés dans la version 1.2.0
 
+- ⚡ **Requêtes asynchrones** - Vérification plus rapide des concours
+- 🎨 **Interface colorée** - Pour une meilleure lisibilité
+- 📊 **Barres de progression** - Visualisez l'avancement
+- 💾 **Sauvegarde des configurations** - Préférences persistantes
+- 📜 **Journalisation** - Suivi des erreurs dans un fichier log
+- 📝 **Historique des participations** - Gardez une trace de vos concours
 
-## ⚠️ Disclaimer
+## 🤝 Contribuer
 
-This tool is for educational purposes only. Please ensure you comply with Instant Gaming's terms of service when using this script.
+Les contributions sont les bienvenues ! N'hésitez pas à:
+1. Forker le dépôt
+2. Créer une branche de fonctionnalités
+3. Soumettre une pull request
 
-## 🔗 Connect With Me
+## ⚠️ Avertissement
+
+Cet outil est destiné à des fins éducatives uniquement. Veuillez vous assurer que vous respectez les conditions d'utilisation d'Instant Gaming lorsque vous utilisez ce script.
+
+## 🔗 Connectez-vous avec moi
 
 [![Twitch](https://img.shields.io/badge/Twitch-9146FF?style=for-the-badge&logo=twitch&logoColor=white)](https://www.twitch.tv/michoko)
 [![BuyMeACoffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/michoko)
 
-## 📄 License
+## 📄 Licence
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Ce projet est sous licence MIT - voir le fichier [LICENSE](LICENSE) pour plus de détails.

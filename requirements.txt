@@ -1,2 +1,6 @@
 keyboard
 requests
+colorama
+tqdm
+aiohttp
+configparser
