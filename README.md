@@ -31,7 +31,22 @@ The Instant Gaming Giveaway Tool is an automated Python script that helps you pa
 2. Run `install library.bat` to install the required dependencies
 3. Or manually install dependencies with: `pip install -r requirements.txt`
 
-## 🚀 Usage
+## � Compiling to Executable
+If you want to create an executable (.exe) version of the application:
+
+1. Make sure you have PyInstaller installed:
+   ```
+   pip install pyinstaller
+   ```
+
+2. Compile the application using:
+   ```
+   pyinstaller --onefile --icon=Magic.ico --name="Giveaway_IG" --add-data "config.ini;." --add-data "traduction.json;." --add-data "List-Uncheck.csv;." --version-file=file_version_info.txt Giveaway_IG.py
+   ```
+
+3. Find the compiled executable in the `dist` folder
+
+## �🚀 Usage
 1. Run the program using `run.bat` or by executing `python Giveaway_IG.py`
 2. Select your preferred language
 3. Choose a CSV file containing the giveaway URLs (default: List-Uncheck.csv)

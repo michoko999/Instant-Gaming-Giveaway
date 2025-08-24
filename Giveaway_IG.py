@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Version: 1.2.0
+# Version: 1.3.0
 # Auteur: Michoko
 # Date de création 18/02/2023
 # https://github.com/michoko999
@@ -21,25 +21,66 @@ from tqdm import tqdm
 import platform
 import configparser
 import logging
+import sys
 
 # Initialisation de colorama pour les couleurs dans le terminal
 init()
 
-# Configuration du logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    filename='giveaway_log.txt',
-    filemode='a'
-)
+# La configuration du logging sera définie plus tard avec le chemin du fichier de log
 
 # Variables globales
-TRADPATH = "traduction.json"
-CONFIG_FILE = "config.ini"
-HISTORY_FILE = "history.json"
-LOG_FILE = "giveaway_log.txt"
+VERSION = "1.3.0"
 translations = None
-VERSION = "1.2.0"
+
+# Affichage des informations de version au démarrage
+print(f"\nInstant Gaming Giveaway Tool v{VERSION}")
+print(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')} | Exécutant les vérifications...")
+
+# Fonction pour obtenir les chemins corrects des ressources, que ce soit en mode développement ou en mode exécutable
+def resource_path(relative_path):
+    """ Récupère le chemin absolu vers une ressource, fonctionne pour le développement et pour PyInstaller """
+    try:
+        # PyInstaller crée un dossier temporaire et stocke le chemin dans _MEIPASS
+        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(base_path, relative_path)
+        logging.debug(f"Chemin de ressource calculé: {path} (base_path: {base_path}, relative_path: {relative_path})")
+        return path
+    except Exception as e:
+        logging.debug(f"Erreur lors du calcul du chemin de ressource: {str(e)}")
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(base_path, relative_path)
+        logging.debug(f"Chemin de ressource alternatif: {path}")
+        return path
+
+def get_writable_path(filename):
+    """Récupère un chemin accessible en écriture pour les fichiers de configuration et logs"""
+    # En mode exécutable, utiliser le dossier TEMP du système
+    if getattr(sys, 'frozen', False):
+        # Créer un sous-dossier spécifique dans le dossier TEMP
+        import tempfile
+        app_dir = os.path.join(tempfile.gettempdir(), 'IG_Giveaway')
+        os.makedirs(app_dir, exist_ok=True)
+        return os.path.join(app_dir, filename)
+    else:
+        # En mode développement, utiliser le répertoire courant
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+
+# Chemin pour les ressources en lecture seule
+TRADPATH = resource_path("traduction.json")
+
+# Chemins pour les fichiers qui doivent être modifiables
+CONFIG_FILE = get_writable_path("config.ini")
+HISTORY_FILE = get_writable_path("history.json")
+LOG_FILE = get_writable_path("giveaway_log.txt")
+
+# Copier le fichier config.ini de ressource vers le dossier utilisateur si nécessaire
+if getattr(sys, 'frozen', False) and not os.path.exists(CONFIG_FILE):
+    try:
+        config_template = resource_path("config.ini")
+        import shutil
+        shutil.copy2(config_template, CONFIG_FILE)
+    except Exception as e:
+        print(f"Erreur lors de la copie du fichier de configuration: {e}")
 
 ASCII_LOGO = [
     r"""
@@ -128,7 +169,7 @@ class Config:
     
     def set(self, section, key, value):
         """Définit une valeur de configuration"""
-        if not self.config.has_section(section):
+        if section != 'DEFAULT' and not self.config.has_section(section):
             self.config.add_section(section)
         self.config[section][key] = value
         self.save_config()
@@ -191,13 +232,16 @@ class GiveawayChecker:
     async def check_url_async(self, url, lang, session):
         """Vérifie de manière asynchrone si un concours est valide"""
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         lang_params = {'fr': 'fr', 'en': 'en', 'es': 'es', 'de': 'de', 'pt': 'pt', 'it': 'it', 'pl': 'pl'}
         lang_param = lang_params.get(lang, 'en')
         
+        # Ajustement de l'URL pour correspondre à la langue
+        original_url = url
         if 'instant-gaming.com' in url:
             url = re.sub(r'/[a-z]{2}/', f'/{lang_param}/', url)
+            logging.debug(f"URL ajustée pour la langue: {url}")
 
         messages = {
             'fr': {'giveaway_ended': 'Ce Giveaway est terminé', 'win_game': 'Gagne le jeu de ton choix'},
@@ -210,18 +254,36 @@ class GiveawayChecker:
         }
 
         try:
-            async with session.get(url, headers=headers) as response:
-                if response.status == 404:
+            # Ajouter un timeout pour éviter les attentes infinies
+            logging.debug(f"Tentative de vérification de l'URL: {url}")
+            async with session.get(url, headers=headers, timeout=10) as response:
+                status = response.status
+                logging.debug(f"Statut HTTP pour {url}: {status}")
+                
+                if status == 404:
+                    logging.debug(f"URL non trouvée (404): {url}")
                     return url, 'invalid'
                 
                 text = await response.text()
+                text_length = len(text)
+                logging.debug(f"Contenu reçu pour {url}, longueur: {text_length} caractères")
                 
+                # Vérifier si le concours est terminé
                 if messages[lang]['giveaway_ended'] in text:
+                    logging.debug(f"Concours terminé trouvé: {url}")
                     return url, 'invalid'
+                
+                # Vérifier si c'est un concours valide
                 if messages[lang]['win_game'] in text:
+                    logging.debug(f"Concours valide trouvé: {url}")
                     return url, 'valid'
                 
+                logging.debug(f"Statut inconnu pour l'URL: {url}")
                 return url, 'unknown'
+                
+        except asyncio.TimeoutError:
+            logging.error(f"Timeout lors de la vérification de l'URL {url}")
+            return url, 'invalid'
         except Exception as e:
             logging.error(f"Erreur lors de la vérification de l'URL {url}: {e}")
             return url, 'invalid'
@@ -229,13 +291,81 @@ class GiveawayChecker:
     async def update_giveaways_async(self, csv_path, lang):
         """Met à jour les concours en utilisant des requêtes asynchrones"""
         try:
-            with open(csv_path, newline='', encoding='utf-8') as csvfile:
+            urls = []
+            # Gérer différemment selon qu'on est en mode exécutable ou développement
+            if getattr(sys, 'frozen', False):
+                # En mode exécutable, vérifier si le fichier est dans le dossier temp
+                import tempfile
+                temp_dir = os.path.join(tempfile.gettempdir(), 'IG_Giveaway')
+                os.makedirs(temp_dir, exist_ok=True)
+                temp_path = os.path.join(temp_dir, os.path.basename(csv_path))
+                
+                # Vérifier d'abord dans le dossier temporaire
+                if os.path.exists(temp_path):
+                    full_path = temp_path
+                    logging.debug(f"Utilisation du fichier trouvé dans le dossier temp: {full_path}")
+                else:
+                    # Si non trouvé, chercher dans les ressources
+                    resource_full_path = resource_path(csv_path)
+                    logging.debug(f"Tentative d'utilisation du fichier depuis les ressources: {resource_full_path}")
+                    
+                    if os.path.exists(resource_full_path):
+                        try:
+                            # Copier le fichier des ressources vers le dossier temp pour le rendre modifiable
+                            import shutil
+                            shutil.copy2(resource_full_path, temp_path)
+                            full_path = temp_path
+                            logging.debug(f"Fichier copié des ressources vers le dossier temp: {full_path}")
+                        except Exception as e:
+                            logging.error(f"Erreur lors de la copie du fichier: {e}")
+                            full_path = resource_full_path
+                    else:
+                        # Utiliser le chemin de ressource comme dernier recours
+                        full_path = resource_full_path
+            else:
+                # En mode développement
+                full_path = resource_path(csv_path)
+                logging.debug(f"Mode développement, chemin du fichier: {full_path}")
+            
+            logging.debug(f"Lecture du fichier CSV pour vérification: {full_path}")
+            
+            # Vérifier si le fichier existe
+            if not os.path.exists(full_path):
+                print(f"{Fore.RED}Fichier {csv_path} non trouvé!{Style.RESET_ALL}")
+                logging.error(f"Fichier {csv_path} non trouvé au chemin {full_path}")
+                return []
+                
+            # Vérifier si le fichier est vide
+            if os.path.getsize(full_path) == 0:
+                print(f"{Fore.YELLOW}Le fichier {csv_path} est vide.{Style.RESET_ALL}")
+                logging.warning(f"Fichier {csv_path} est vide")
+                return []
+                
+            with open(full_path, newline='', encoding='utf-8') as csvfile:
                 reader = csv.reader(csvfile)
-                urls = [row[0] for row in reader if row]
+                all_urls = [row[0] for row in reader if row]
+                
+            if not all_urls:
+                print(f"{Fore.YELLOW}Aucune URL trouvée dans le fichier {csv_path}.{Style.RESET_ALL}")
+                return []
+            
+            # Éliminer les doublons tout en préservant l'ordre
+            seen_urls = set()
+            urls = []
+            for url in all_urls:
+                url_lower = url.strip().lower()  # Normaliser l'URL pour la comparaison
+                if url_lower not in seen_urls:
+                    seen_urls.add(url_lower)
+                    urls.append(url)
+                
+            print(f"{Fore.CYAN}Nombre d'URLs à vérifier: {len(urls)}{Style.RESET_ALL}")
+            if len(urls) < len(all_urls):
+                print(f"{Fore.YELLOW}{len(all_urls) - len(urls)} doublons ont été éliminés.{Style.RESET_ALL}")
+                
         except Exception as e:
             print(f"{Fore.RED}Erreur lors de la lecture du fichier CSV: {e}{Style.RESET_ALL}")
             logging.error(f"Erreur lors de la lecture du fichier CSV: {e}")
-            return
+            return []
         
         valid_urls = []
         invalid_urls = []
@@ -264,19 +394,65 @@ class GiveawayChecker:
         print(f"{Fore.RED}{self.translations[lang]['invalid_giveaways'].format(len(invalid_urls))}{Style.RESET_ALL}")
         print(f"{Fore.YELLOW}{self.translations[lang]['unknown_giveaways'].format(len(unknown_urls))}{Style.RESET_ALL}")
         
-        self._save_urls_to_csv('valid_urls.csv', valid_urls)
-        self._save_urls_to_csv('invalid_urls.csv', invalid_urls)
-        self._save_urls_to_csv('unknown_urls.csv', unknown_urls)
-        
+        # Sauvegarder dans le dossier temporaire si en mode exécutable
+        if getattr(sys, 'frozen', False):
+            import tempfile
+            temp_dir = os.path.join(tempfile.gettempdir(), 'IG_Giveaway')
+            os.makedirs(temp_dir, exist_ok=True)
+            
+            valid_urls_path = os.path.join(temp_dir, 'valid_urls.csv')
+            invalid_urls_path = os.path.join(temp_dir, 'invalid_urls.csv')
+            unknown_urls_path = os.path.join(temp_dir, 'unknown_urls.csv')
+            
+            self._save_urls_to_csv(valid_urls_path, valid_urls)
+            self._save_urls_to_csv(invalid_urls_path, invalid_urls)
+            self._save_urls_to_csv(unknown_urls_path, unknown_urls)
+            
+            # Important: Afficher les chemins des fichiers sauvegardés pour le débogage
+            logging.debug(f"Fichiers sauvegardés dans le dossier temporaire: {temp_dir}")
+            logging.debug(f"valid_urls.csv: {valid_urls_path}")
+            logging.debug(f"invalid_urls.csv: {invalid_urls_path}")
+            logging.debug(f"unknown_urls.csv: {unknown_urls_path}")
+            print(f"{Fore.GREEN}Fichiers sauvegardés dans: {temp_dir}{Style.RESET_ALL}")
+        else:
+            # En mode développement, utiliser le répertoire courant
+            self._save_urls_to_csv('valid_urls.csv', valid_urls)
+            self._save_urls_to_csv('invalid_urls.csv', invalid_urls)
+            self._save_urls_to_csv('unknown_urls.csv', unknown_urls)
+            
         return valid_urls
     
     def _save_urls_to_csv(self, filename, urls):
         """Sauvegarde une liste d'URLs dans un fichier CSV"""
         try:
+            # Assurer que le dossier parent existe
+            parent_dir = os.path.dirname(filename)
+            if parent_dir and not os.path.exists(parent_dir):
+                os.makedirs(parent_dir, exist_ok=True)
+                logging.debug(f"Création du dossier: {parent_dir}")
+            
+            # Éliminer les doublons tout en préservant l'ordre
+            seen_urls = set()
+            unique_urls = []
+            for url in urls:
+                url_lower = url.strip().lower()  # Normaliser l'URL pour la comparaison
+                if url_lower not in seen_urls:
+                    seen_urls.add(url_lower)
+                    unique_urls.append(url)
+            
+            # Si des doublons ont été éliminés, le signaler dans le log
+            if len(unique_urls) < len(urls):
+                logging.debug(f"Doublons éliminés dans {filename}: {len(urls) - len(unique_urls)} URLs en double supprimées")
+            
+            # Sauvegarder le fichier avec les URLs uniques
             with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
                 writer = csv.writer(csvfile)
-                for url in urls:
+                for url in unique_urls:
                     writer.writerow([url])
+            
+            logging.debug(f"Fichier sauvegardé avec succès: {filename} ({len(urls)} URLs)")
+            print(f"{Fore.GREEN}Fichier {os.path.basename(filename)} sauvegardé avec {len(urls)} URLs{Style.RESET_ALL}")
+            
         except Exception as e:
             print(f"{Fore.RED}Erreur lors de la sauvegarde du fichier {filename}: {e}{Style.RESET_ALL}")
             logging.error(f"Erreur lors de la sauvegarde du fichier {filename}: {e}")
@@ -284,18 +460,62 @@ class GiveawayChecker:
     def get_urls(self, csv_path: str) -> list:
         """Récupère les URLs depuis un fichier CSV"""
         try:
-            abs_path = os.path.abspath(__file__)
-            full_path = os.path.join(os.path.dirname(abs_path), csv_path)
+            # Gérer différemment selon qu'on est en mode exécutable ou développement
+            if getattr(sys, 'frozen', False):
+                # En mode exécutable, vérifier si le fichier est dans le dossier temp
+                import tempfile
+                temp_dir = os.path.join(tempfile.gettempdir(), 'IG_Giveaway')
+                os.makedirs(temp_dir, exist_ok=True)
+                temp_path = os.path.join(temp_dir, os.path.basename(csv_path))
+                
+                # Vérifier d'abord dans le dossier temporaire
+                if os.path.exists(temp_path):
+                    full_path = temp_path
+                    logging.debug(f"Utilisation du fichier trouvé dans le dossier temp: {full_path}")
+                else:
+                    # Si non trouvé, chercher dans les ressources et le copier dans le dossier temp
+                    resource_full_path = resource_path(csv_path)
+                    logging.debug(f"Tentative d'utilisation du fichier depuis les ressources: {resource_full_path}")
+                    
+                    if os.path.exists(resource_full_path):
+                        try:
+                            # Copier le fichier des ressources vers le dossier temp pour le rendre modifiable
+                            import shutil
+                            shutil.copy2(resource_full_path, temp_path)
+                            full_path = temp_path
+                            logging.debug(f"Fichier copié des ressources vers le dossier temp: {full_path}")
+                        except Exception as e:
+                            logging.error(f"Erreur lors de la copie du fichier: {e}")
+                            full_path = resource_full_path
+                    else:
+                        # Utiliser le chemin de ressource comme dernier recours
+                        full_path = resource_full_path
+            else:
+                # En mode développement
+                full_path = resource_path(csv_path)
+                logging.debug(f"Mode développement, chemin du fichier: {full_path}")
+            
+            if not os.path.exists(full_path):
+                raise FileNotFoundError(f"Fichier non trouvé: {full_path}")
+                
+            logging.debug(f"Lecture du fichier CSV: {full_path}")
             urls = []
             with open(full_path, "r", encoding="utf-8") as f:
                 reader = csv.reader(f)
                 for row in reader:
                     if row:  # Vérifier que la ligne n'est pas vide
                         urls.append(row[0])
+            logging.debug(f"{len(urls)} URLs trouvées dans le fichier")
             return urls
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             print(f"{Fore.RED}{self.translations[self.lang]['errorfile']}{Style.RESET_ALL}")
-            logging.error(f"Fichier non trouvé: {csv_path}")
+            logging.error(f"Fichier non trouvé: {csv_path}, erreur: {str(e)}")
+            return None
+        except Exception as e:
+            error_message = f"Erreur lors de la lecture du fichier {csv_path}: {str(e)}"
+            print(f"{Fore.RED}{error_message}{Style.RESET_ALL}")
+            logging.error(error_message)
+            logging.exception("Détails de l'erreur:")
             return None
     
     def open_urls(self, urls, seconds_per_url):
@@ -377,16 +597,13 @@ def get_lang(translations, config):
         print(f"{Fore.YELLOW}{current_lang_message}{Style.RESET_ALL}")
         
         change_lang = input(f"{Fore.CYAN}{change_lang_message}{Style.RESET_ALL}").lower()
-        if change_lang in ['o', 'y', 'oui', 'yes']:
+        if change_lang in [translations['en']['yes'].lower(), translations['en']['yes'][0].lower()]:
             langchoice = input(f"\n{Fore.CYAN}Language (fr/en/es/de/pt/it/pl): {Style.RESET_ALL}")
             if langchoice not in list(translations.keys()):
                 langchoice = "en"
                 print(f"{Fore.YELLOW}{translations[langchoice]['errorlang']}{Style.RESET_ALL}")
             
-            # S'assurer que la section DEFAULT existe
-            if 'DEFAULT' not in config.config.sections() and 'DEFAULT' != config.config.default_section:
-                config.create_default_config()
-            
+            # Définir la langue dans la configuration
             config.set('DEFAULT', 'language', langchoice)
             return langchoice
         return default_lang
@@ -401,22 +618,31 @@ def get_seconds_per_url(lang, translations, config):
     default_seconds = float(config.get('DEFAULT', 'seconds_per_url', fallback='3.0'))
     print(f"{Fore.YELLOW}{translations[lang]['current_time'].format(default_seconds)}{Style.RESET_ALL}")
     
-    change_seconds = input(f"{Fore.CYAN}{translations[lang]['change_time']}{Style.RESET_ALL}").lower()
-    if change_seconds in ['o', 'y', 'oui', 'yes']:
-        while True:
-            try:
-                seconds_per_url = float(input(f"\n{Fore.CYAN}{translations[lang]['seconds_per_url']}{Style.RESET_ALL} "))
-                config.set('DEFAULT', 'seconds_per_url', str(seconds_per_url))
-                return seconds_per_url
-            except ValueError:
-                print(f"{Fore.RED}{translations[lang]['errortype']}{Style.RESET_ALL}\n")
+    try:
+        change_seconds = input(f"{Fore.CYAN}{translations[lang]['change_time']}{Style.RESET_ALL} ").lower()
+        if change_seconds in ["yes", "y", "oui", "o", translations[lang]["yes"].lower(), translations[lang]["yes"][0].lower()]:
+            while True:
+                try:
+                    seconds_per_url = float(input(f"\n{Fore.CYAN}{translations[lang]['seconds_per_url']}{Style.RESET_ALL} "))
+                    config.set('DEFAULT', 'seconds_per_url', str(seconds_per_url))
+                    return seconds_per_url
+                except ValueError:
+                    print(f"{Fore.RED}{translations[lang]['errortype']}{Style.RESET_ALL}\n")
+    except Exception as e:
+        logging.error(f"Erreur lors de la saisie du temps entre les URLs: {str(e)}")
+        print(f"{Fore.YELLOW}Utilisation du temps par défaut: {default_seconds}s{Style.RESET_ALL}")
     return default_seconds
 
 
 def get_ready(lang, translations):
     """Demande si l'utilisateur est prêt à commencer"""
-    ready = input(f"\n{Fore.GREEN}{translations[lang]['reponse']}{Style.RESET_ALL}").lower()
-    if ready in (translations[lang]["yes"].lower(), translations[lang]["yes"][0].lower()):
+    try:
+        ready = input(f"\n{Fore.GREEN}{translations[lang]['reponse']}{Style.RESET_ALL} ").lower()
+        if ready in ("yes", "y", "oui", "o", translations[lang]["yes"].lower(), translations[lang]["yes"][0].lower()):
+            return True
+    except Exception as e:
+        logging.error(f"Erreur lors de la demande si prêt: {str(e)}")
+        print(f"{Fore.YELLOW}Supposant que l'utilisateur est prêt...{Style.RESET_ALL}")
         return True
     return False
 
@@ -424,6 +650,16 @@ def get_ready(lang, translations):
 async def main():
     """Fonction principale asynchrone"""
     try:
+        # Configurer le logging avec le bon chemin du fichier de log
+        logging.basicConfig(
+            level=logging.DEBUG,  # Augmenter le niveau de logging pour voir tous les messages
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            filename=LOG_FILE,
+            filemode='a'
+        )
+        
+        logging.debug("Programme démarré")
+        
         # Effacer l'écran
         os.system('cls' if os.name == 'nt' else 'clear')
         
@@ -436,12 +672,15 @@ async def main():
         # Charger les traductions
         global translations
         try:
-            with open('traduction.json', "r", encoding="utf-8") as f:
+            with open(TRADPATH, "r", encoding="utf-8") as f:
                 translations = json.load(f)
         except Exception as e:
             print(f"{Fore.RED}Erreur lors du chargement des traductions: {e}{Style.RESET_ALL}")
             logging.error(f"Erreur lors du chargement des traductions: {e}")
             return
+        
+        # Ajouter une information sur la non-affiliation
+        print(f"\n{Fore.YELLOW}Note: Ce programme ne contient aucun lien d'affiliation avec Instant Gaming, contrairement à d'autres outils/listes de concours.{Style.RESET_ALL}")
         
         # Obtenir la langue
         lang = get_lang(translations, config)
@@ -451,36 +690,327 @@ async def main():
         
         # Demander si mise à jour des concours
         update_choice = input(f"\n{Fore.CYAN}{translations[lang]['update_choice']}{Style.RESET_ALL} ")
-        if update_choice.lower() in ['yes', 'oui', 'y', 'o', 'sí', 'si', 'ja']:
-            valid_urls = await checker.update_giveaways_async('List-Uncheck.csv', lang)
-            if valid_urls:
-                use_valid = input(f"\n{Fore.CYAN}{translations[lang]['use_valid_urls']}{Style.RESET_ALL}").lower()
-                if use_valid in ['o', 'y', 'oui', 'yes']:
-                    urls = valid_urls
+        if update_choice.lower() in ["yes", "y", translations[lang]["yes"].lower(), translations[lang]["yes"][0].lower()]:
+            list_uncheck_path = 'List-Uncheck.csv'
+            # Extraire List-Uncheck.csv si en mode exécutable et le placer dans le dossier temporaire
+            if getattr(sys, 'frozen', False):
+                try:
+                    # Utiliser le même dossier temporaire que pour les autres fichiers
+                    import tempfile
+                    temp_dir = os.path.join(tempfile.gettempdir(), 'IG_Giveaway')
+                    os.makedirs(temp_dir, exist_ok=True)
+                    list_uncheck_path = os.path.join(temp_dir, 'List-Uncheck.csv')
+                    
+                    logging.debug(f"Dossier temporaire créé: {temp_dir}")
+                    logging.debug(f"Chemin du fichier List-Uncheck.csv: {list_uncheck_path}")
+                    
+                    # Trouver le chemin du fichier dans l'exécutable
+                    src_file = resource_path('List-Uncheck.csv')
+                    logging.debug(f"Chemin source pour List-Uncheck.csv: {src_file}")
+                    
+                    # Vérifier si le fichier existe dans l'exécutable
+                    if os.path.exists(src_file):
+                        import shutil
+                        shutil.copy2(src_file, list_uncheck_path)
+                        print(f"{Fore.GREEN}Fichier de liste chargé avec succès.{Style.RESET_ALL}")
+                        logging.debug(f"Fichier copié avec succès de {src_file} vers {list_uncheck_path}")
+                    else:
+                        # Si le fichier n'est pas trouvé, créer un fichier vide
+                        with open(list_uncheck_path, 'w', encoding='utf-8') as f:
+                            pass  # Créer un fichier vide
+                        print(f"{Fore.YELLOW}Fichier de liste non trouvé dans l'exécutable. Un nouveau fichier vide a été créé.{Style.RESET_ALL}")
+                        logging.debug(f"Fichier source non trouvé, création d'un fichier vide: {list_uncheck_path}")
+                except Exception as e:
+                    error_message = f"Erreur lors du chargement du fichier de liste: {str(e)}"
+                    print(f"{Fore.RED}{error_message}{Style.RESET_ALL}")
+                    logging.error(error_message)
+                    logging.exception("Détails de l'erreur:")
+            
+            # Toujours récupérer les liens depuis GitHub
+            print(f"\n{Fore.CYAN}Récupération des liens depuis GitHub...{Style.RESET_ALL}")
+            github_url = "https://raw.githubusercontent.com/enzomtpYT/InstantGamingGiveawayList/refs/heads/main/json.json"
+            logging.debug(f"Tentative de récupération des données depuis: {github_url}")
+            
+            use_remote = True
+            use_local = False
+            json_path = ""
+                
+            if use_remote or use_local:
+                try:
+                    
+                    # Charger les URLs du fichier existant
+                    existing_urls = []
+                    try:
+                        with open(list_uncheck_path, "r", encoding="utf-8") as csvfile:
+                            reader = csv.reader(csvfile)
+                            existing_urls = [row[0] for row in reader if row]
+                        logging.debug(f"URLs existantes chargées: {len(existing_urls)}")
+                    except Exception as e:
+                        print(f"{Fore.YELLOW}Pas de liste existante trouvée. Création d'une nouvelle liste.{Style.RESET_ALL}")
+                        logging.debug(f"Erreur de lecture du fichier existant: {str(e)}")
+                    
+                    # Récupérer et traiter les données JSON (soit depuis GitHub, soit depuis un fichier local)
+                    github_data = {}
+                    if use_remote:
+                        response = requests.get(github_url)
+                        response.raise_for_status()
+                        github_data = response.json()
+                        print(f"{Fore.GREEN}Données récupérées depuis GitHub avec succès.{Style.RESET_ALL}")
+                    elif use_local:
+                        with open(json_path, "r", encoding="utf-8") as json_file:
+                            github_data = json.load(json_file)
+                        print(f"{Fore.GREEN}Données chargées depuis le fichier local avec succès.{Style.RESET_ALL}")
+                    
+                    github_urls = []
+                    
+                    # Traiter les concours actifs (alive) du JSON
+                    if "alive" in github_data and isinstance(github_data["alive"], list):
+                        alive_usernames = github_data["alive"]
+                        for username in alive_usernames:
+                            # Créer l'URL pour chaque nom d'utilisateur
+                            github_urls.append(f"https://www.instant-gaming.com/{lang}/giveaway/{username.upper()}")
+                        
+                        print(f"{Fore.GREEN}Nombre de concours actifs trouvés: {len(alive_usernames)}{Style.RESET_ALL}")
+                        logging.debug(f"Nombre de concours actifs trouvés: {len(alive_usernames)}")
+                    else:
+                        print(f"{Fore.YELLOW}Aucun concours actif trouvé dans les données JSON ou format incorrect{Style.RESET_ALL}")
+                        logging.warning("Aucun concours actif trouvé dans les données JSON ou format incorrect")
+                    
+                    # Optionnel: traiter également les concours terminés pour référence
+                    if "dead" in github_data and isinstance(github_data["dead"], list):
+                        dead_usernames = github_data["dead"]
+                        print(f"{Fore.YELLOW}Nombre de concours terminés trouvés: {len(dead_usernames)}{Style.RESET_ALL}")
+                        logging.debug(f"Nombre de concours terminés trouvés: {len(dead_usernames)}")
+                    
+                    total_github_urls = len(github_urls)
+                    logging.debug(f"URLs totales générées: {total_github_urls}")
+                    print(f"{Fore.CYAN}URLs totales générées: {total_github_urls}{Style.RESET_ALL}")
+                    
+                    # Compter combien de nouvelles URLs seront ajoutées
+                    existing_urls_set = set(existing_urls)
+                    github_urls_set = set(github_urls)
+                    new_urls = github_urls_set - existing_urls_set
+                    new_urls_count = len(new_urls)
+                    
+                    # S'assurer que les URL sont normalisées pour éviter les doublons
+                    existing_urls_normalized = [url.strip().lower() for url in existing_urls]
+                    github_urls_normalized = [url.strip().lower() for url in github_urls]
+                    
+                    # Éliminer les doublons en utilisant des ensembles
+                    existing_urls_set = set(existing_urls_normalized)
+                    github_urls_set = set(github_urls_normalized)
+                    new_urls = github_urls_set - existing_urls_set
+                    new_urls_count = len(new_urls)
+                    
+                    # Afficher les statistiques
+                    print(f"{Fore.CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Style.RESET_ALL}")
+                    print(f"{Fore.YELLOW}Total des concours sur GitHub: {total_github_urls}{Style.RESET_ALL}")
+                    print(f"{Fore.YELLOW}Concours dans votre liste actuelle: {len(existing_urls)}{Style.RESET_ALL}")
+                    print(f"{Fore.GREEN}Nouveaux concours à ajouter: {new_urls_count}{Style.RESET_ALL}")
+                    print(f"{Fore.CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Style.RESET_ALL}")
+                    
+                    # Fusionner les listes, éliminer les doublons tout en préservant la casse originale des URL
+                    # Créer un dictionnaire de correspondance entre les URLs normalisées et les URLs originales
+                    url_mapping = {}
+                    for url in existing_urls + github_urls:
+                        url_mapping[url.strip().lower()] = url
+                    
+                    # Obtenir la liste finale sans doublons, en préservant la casse originale
+                    all_urls = [url_mapping[url_norm] for url_norm in set(existing_urls_normalized + github_urls_normalized)]
+                    
+                    # Écrire la liste fusionnée
+                    with open(list_uncheck_path, "w", newline='', encoding="utf-8") as csvfile:
+                        writer = csv.writer(csvfile)
+                        for url in all_urls:
+                            writer.writerow([url])
+                    
+                    if new_urls_count > 0:
+                        print(f"{Fore.GREEN}✓ {new_urls_count} nouveaux concours ajoutés à votre liste!{Style.RESET_ALL}")
+                    else:
+                        print(f"{Fore.YELLOW}Votre liste est déjà à jour. Aucun nouveau concours trouvé.{Style.RESET_ALL}")
+                    
+                    print(f"{Fore.GREEN}Liens GitHub fusionnés avec succès. Total: {len(all_urls)} URLs{Style.RESET_ALL}")
+                    logging.debug(f"Liste fusionnée écrite avec succès. Total: {len(all_urls)} URLs")
+                except Exception as e:
+                    error_message = f"Erreur lors de la récupération ou du traitement des liens: {str(e)}"
+                    print(f"{Fore.RED}{error_message}{Style.RESET_ALL}")
+                    logging.error(error_message)
+                    logging.exception("Détails de l'erreur:")
+            
+            try:
+                print(f"{Fore.CYAN}Vérification des concours en cours, veuillez patienter...{Style.RESET_ALL}")
+                logging.debug(f"Démarrage de update_giveaways_async avec {list_uncheck_path}")
+                
+                # Vérifier que le fichier existe avant de continuer
+                if not os.path.exists(list_uncheck_path):
+                    print(f"{Fore.YELLOW}Le fichier {list_uncheck_path} n'existe pas. Utilisation d'un fichier vide.{Style.RESET_ALL}")
+                    # Créer un fichier vide
+                    with open(list_uncheck_path, 'w', encoding='utf-8') as f:
+                        pass
+                
+                # Vérifier que le fichier n'est pas vide
+                file_size = os.path.getsize(list_uncheck_path)
+                if file_size == 0:
+                    print(f"{Fore.YELLOW}Le fichier {list_uncheck_path} est vide. Récupération des liens depuis GitHub recommandée.{Style.RESET_ALL}")
+                    
+                print(f"{Fore.CYAN}Démarrage de la vérification asynchrone des concours...{Style.RESET_ALL}")
+                # Ajouter un délai visible pour montrer que le processus commence
+                time.sleep(2)
+                
+                try:
+                    valid_urls = await checker.update_giveaways_async(list_uncheck_path, lang)
+                    print(f"{Fore.CYAN}Vérification asynchrone terminée.{Style.RESET_ALL}")
+                    
+                    if valid_urls and len(valid_urls) > 0:
+                        print(f"{Fore.GREEN}Vérification terminée avec succès ! {len(valid_urls)} concours valides trouvés.{Style.RESET_ALL}")
+                    else:
+                        print(f"{Fore.RED}Aucun concours valide trouvé. Veuillez vérifier votre connexion internet ou essayer la récupération depuis GitHub.{Style.RESET_ALL}")
+                except Exception as e:
+                    print(f"{Fore.RED}Erreur lors de la vérification asynchrone: {e}{Style.RESET_ALL}")
+                    logging.error(f"Erreur lors de la vérification asynchrone: {e}")
+                    logging.exception("Détails de l'erreur:")
+                    valid_urls = []
+                
+                logging.debug(f"update_giveaways_async terminé avec {len(valid_urls) if valid_urls else 0} URLs valides")
+            except Exception as e:
+                error_message = f"Erreur lors de la mise à jour des concours: {str(e)}"
+                print(f"{Fore.RED}{error_message}{Style.RESET_ALL}")
+                logging.error(error_message)
+                logging.exception("Détails de l'erreur:")
+                valid_urls = []
+            # Utiliser des URLs valides ou un fichier
+            if valid_urls and len(valid_urls) > 0:
+                try:
+                    print(f"\n{Fore.GREEN}URLs valides trouvées: {len(valid_urls)}{Style.RESET_ALL}")
+                    use_valid = input(f"{Fore.CYAN}{translations[lang]['use_valid_urls']}{Style.RESET_ALL} ").lower()
+                    logging.debug(f"Réponse pour utiliser les URLs valides: {use_valid}")
+                    
+                    if use_valid in ["yes", "y", "oui", "o", translations[lang]["yes"].lower(), translations[lang]["yes"][0].lower()]:
+                        urls = valid_urls
+                        file_name = None
+                        logging.debug(f"Utilisation des URLs valides récupérées: {len(urls)} URLs")
+                    else:
+                        # Si l'utilisateur ne veut pas utiliser les URLs valides, proposer un choix parmi les fichiers existants
+                        # Afficher les fichiers disponibles avec leur emplacement en mode exécutable
+                        if getattr(sys, 'frozen', False):
+                            import tempfile
+                            temp_dir = os.path.join(tempfile.gettempdir(), 'IG_Giveaway')
+                            print(f"\n{Fore.YELLOW}Fichiers disponibles dans {temp_dir}: valid_urls.csv, List-Uncheck.csv{Style.RESET_ALL}")
+                            print(f"{Fore.YELLOW}Entrez uniquement le nom du fichier, pas le chemin complet.{Style.RESET_ALL}")
+                        else:
+                            print(f"\n{Fore.YELLOW}Fichiers disponibles: valid_urls.csv, List-Uncheck.csv{Style.RESET_ALL}")
+                        
+                        file_name = input(f"{Fore.CYAN}{translations[lang]['csv_file_name']}{Style.RESET_ALL} ")
+                        if not file_name:
+                            file_name = "valid_urls.csv"  # Valeur par défaut
+                        logging.debug(f"Fichier à utiliser spécifié par l'utilisateur: {file_name}")
+                except Exception as e:
+                    error_message = f"Erreur lors de la sélection des URLs: {str(e)}"
+                    print(f"{Fore.RED}{error_message}{Style.RESET_ALL}")
+                    logging.error(error_message)
+                    urls = valid_urls  # Utiliser les URLs valides en cas d'erreur
                     file_name = None
-                else:
-                    file_name = input(f"\n{Fore.CYAN}{translations[lang]['csv_file_name']}{Style.RESET_ALL} ")
             else:
-                file_name = input(f"\n{Fore.CYAN}{translations[lang]['csv_file_name']}{Style.RESET_ALL} ")
+                # Aucune URL valide trouvée, demander un fichier
+                if getattr(sys, 'frozen', False):
+                    import tempfile
+                    temp_dir = os.path.join(tempfile.gettempdir(), 'IG_Giveaway')
+                    print(f"\n{Fore.YELLOW}Aucune URL valide trouvée. Fichiers disponibles dans {temp_dir}: valid_urls.csv, List-Uncheck.csv{Style.RESET_ALL}")
+                    print(f"{Fore.YELLOW}Entrez uniquement le nom du fichier, pas le chemin complet.{Style.RESET_ALL}")
+                else:
+                    print(f"\n{Fore.YELLOW}Aucune URL valide trouvée. Fichiers disponibles: valid_urls.csv, List-Uncheck.csv{Style.RESET_ALL}")
+                
+                try:
+                    file_name = input(f"{Fore.CYAN}{translations[lang]['csv_file_name']}{Style.RESET_ALL} ")
+                    if not file_name:
+                        file_name = "valid_urls.csv"  # Valeur par défaut
+                    logging.debug(f"Fichier à utiliser spécifié: {file_name}")
+                except Exception as e:
+                    error_message = f"Erreur lors de la demande du nom de fichier: {str(e)}"
+                    print(f"{Fore.RED}{error_message}{Style.RESET_ALL}")
+                    logging.error(error_message)
+                    file_name = "valid_urls.csv"  # Valeur par défaut
         else:
-            file_name = input(f"\n{Fore.CYAN}{translations[lang]['csv_file_name']}{Style.RESET_ALL} ")
+            # Pas de mise à jour demandée, utiliser un fichier existant
+            if getattr(sys, 'frozen', False):
+                import tempfile
+                temp_dir = os.path.join(tempfile.gettempdir(), 'IG_Giveaway')
+                print(f"\n{Fore.YELLOW}Fichiers disponibles dans {temp_dir}: valid_urls.csv, List-Uncheck.csv{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}Entrez uniquement le nom du fichier, pas le chemin complet.{Style.RESET_ALL}")
+            else:
+                print(f"\n{Fore.YELLOW}Fichiers disponibles: valid_urls.csv, List-Uncheck.csv{Style.RESET_ALL}")
+                
+            try:
+                file_name = input(f"{Fore.CYAN}{translations[lang]['csv_file_name']}{Style.RESET_ALL} ")
+                if not file_name:
+                    file_name = "valid_urls.csv"  # Valeur par défaut
+                logging.debug(f"Fichier à utiliser spécifié: {file_name}")
+            except Exception as e:
+                error_message = f"Erreur lors de la demande du nom de fichier: {str(e)}"
+                print(f"{Fore.RED}{error_message}{Style.RESET_ALL}")
+                logging.error(error_message)
+                file_name = "valid_urls.csv"  # Valeur par défaut
         
         if file_name:
-            urls = checker.get_urls(file_name)
-            if urls is None:
+            try:
+                print(f"{Fore.CYAN}Chargement du fichier {file_name}...{Style.RESET_ALL}")
+                urls = checker.get_urls(file_name)
+                if urls is None or len(urls) == 0:
+                    # En cas d'erreur avec le fichier spécifié, utiliser un fichier par défaut
+                    print(f"{Fore.YELLOW}Fichier vide ou introuvable. Tentative d'utilisation du fichier par défaut...{Style.RESET_ALL}")
+                    urls = checker.get_urls("valid_urls.csv")
+                    if urls is None or len(urls) == 0:
+                        # Si aucun fichier ne fonctionne, créer un fichier vide
+                        import tempfile
+                        temp_dir = os.path.join(tempfile.gettempdir(), 'IG_Giveaway')
+                        os.makedirs(temp_dir, exist_ok=True)
+                        default_file = os.path.join(temp_dir, 'valid_urls.csv')
+                        
+                        try:
+                            with open(default_file, 'w', newline='', encoding='utf-8') as f:
+                                writer = csv.writer(f)
+                                writer.writerow(["https://www.instant-gaming.com/fr/giveaway/"])
+                            urls = [f"https://www.instant-gaming.com/{lang}/giveaway/"]
+                            print(f"{Fore.GREEN}Fichier créé avec une URL par défaut.{Style.RESET_ALL}")
+                        except Exception as e:
+                            print(f"{Fore.RED}Impossible de créer un fichier par défaut: {str(e)}{Style.RESET_ALL}")
+                            return
+                print(f"{Fore.GREEN}Fichier chargé avec succès. {len(urls)} URLs trouvées.{Style.RESET_ALL}")
+            except Exception as e:
+                error_message = f"Erreur lors du chargement du fichier: {str(e)}"
+                print(f"{Fore.RED}{error_message}{Style.RESET_ALL}")
+                logging.error(error_message)
+                # Créer un fichier par défaut comme solution de secours
+                try:
+                    import tempfile
+                    temp_dir = os.path.join(tempfile.gettempdir(), 'IG_Giveaway')
+                    os.makedirs(temp_dir, exist_ok=True)
+                    default_file = os.path.join(temp_dir, 'valid_urls.csv')
+                    with open(default_file, 'w', newline='', encoding='utf-8') as f:
+                        writer = csv.writer(f)
+                        writer.writerow(["https://www.instant-gaming.com/fr/giveaway/"])
+                    urls = [f"https://www.instant-gaming.com/{lang}/giveaway/"]
+                    print(f"{Fore.GREEN}Fichier de secours créé avec une URL par défaut.{Style.RESET_ALL}")
+                except:
+                    print(f"{Fore.RED}Impossible de créer un fichier de secours. Le programme va se terminer.{Style.RESET_ALL}")
+                    return
+        
+        try:
+            # Obtenir le temps entre chaque URL
+            seconds_between_urls = get_seconds_per_url(lang, translations, config)
+            
+            # Afficher les explications
+            print(f"\n{Fore.YELLOW}{translations[lang]['explications']}{Style.RESET_ALL}")
+            
+            # Demander si prêt
+            ready = get_ready(lang, translations)
+            if not ready:
+                print(f"\n{Fore.RED}Programme annulé par l'utilisateur.{Style.RESET_ALL}")
                 return
-        
-        # Obtenir le temps entre chaque URL
-        seconds_between_urls = get_seconds_per_url(lang, translations, config)
-        
-        # Afficher les explications
-        print(f"\n{Fore.YELLOW}{translations[lang]['explications']}{Style.RESET_ALL}")
-        
-        # Demander si prêt
-        ready = get_ready(lang, translations)
-        if not ready:
-            print(f"\n{Fore.RED}Programme annulé par l'utilisateur.{Style.RESET_ALL}")
-            return
+        except Exception as e:
+            logging.error(f"Erreur lors de la préparation: {str(e)}")
+            print(f"{Fore.YELLOW}Configuration par défaut utilisée.{Style.RESET_ALL}")
+            seconds_between_urls = 3.0
         
         # Ouvrir les URLs
         success, errors = checker.open_urls(urls, seconds_between_urls)

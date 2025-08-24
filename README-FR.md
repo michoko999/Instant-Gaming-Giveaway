@@ -31,7 +31,22 @@ L'outil de Giveaway Instant Gaming est un script Python automatisé qui vous aid
 2. Exécutez `install library.bat` pour installer les dépendances requises
 3. Ou installez manuellement les dépendances avec : `pip install -r requirements.txt`
 
-## 🚀 Utilisation
+## � Compilation en exécutable
+Si vous souhaitez créer une version exécutable (.exe) de l'application :
+
+1. Assurez-vous d'avoir PyInstaller installé :
+   ```
+   pip install pyinstaller
+   ```
+
+2. Compilez l'application en utilisant :
+   ```
+   pyinstaller --onefile --icon=Magic.ico --name="Giveaway_IG" --add-data "config.ini;." --add-data "traduction.json;." --add-data "List-Uncheck.csv;." --version-file=file_version_info.txt Giveaway_IG.py
+   ```
+
+3. Trouvez l'exécutable compilé dans le dossier `dist`
+
+## �🚀 Utilisation
 1. Lancez le programme en utilisant `run.bat` ou en exécutant `python Giveaway_IG.py`
 2. Sélectionnez votre langue préférée
 3. Choisissez un fichier CSV contenant les URLs des concours (par défaut : List-Uncheck.csv)
