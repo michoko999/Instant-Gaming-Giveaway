@@ -241,7 +241,7 @@ class GiveawayChecker:
         invalid_urls = []
         unknown_urls = []
         
-        print(f"{Fore.CYAN}Vérification des concours en cours...{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}{self.translations[lang]['checking_giveaways']}{Style.RESET_ALL}")
         
         async with aiohttp.ClientSession() as session:
             tasks = [self.check_url_async(url, lang, session) for url in urls]
@@ -260,9 +260,9 @@ class GiveawayChecker:
                 else:
                     unknown_urls.append(url)
         
-        print(f"\n{Fore.GREEN}Concours valides: {len(valid_urls)}{Style.RESET_ALL}")
-        print(f"{Fore.RED}Concours invalides: {len(invalid_urls)}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}Concours inconnus: {len(unknown_urls)}{Style.RESET_ALL}")
+        print(f"\n{Fore.GREEN}{self.translations[lang]['valid_giveaways'].format(len(valid_urls))}{Style.RESET_ALL}")
+        print(f"{Fore.RED}{self.translations[lang]['invalid_giveaways'].format(len(invalid_urls))}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}{self.translations[lang]['unknown_giveaways'].format(len(unknown_urls))}{Style.RESET_ALL}")
         
         self._save_urls_to_csv('valid_urls.csv', valid_urls)
         self._save_urls_to_csv('invalid_urls.csv', invalid_urls)
@@ -308,7 +308,7 @@ class GiveawayChecker:
         success_count = 0
         error_count = 0
         
-        print(f"\n{Fore.CYAN}Début d'ouverture des URLs...{Style.RESET_ALL}")
+        print(f"\n{Fore.CYAN}{self.translations[self.lang]['opening_urls']}{Style.RESET_ALL}")
         
         for i, url in enumerate(urls, 1):
             try:
@@ -319,7 +319,7 @@ class GiveawayChecker:
                     url_with_lang = url
                 
                 # Afficher la progression
-                print(f"{Fore.GREEN}[{i}/{len(urls)}] Ouverture de: {url_with_lang}{Style.RESET_ALL}")
+                print(f"{Fore.GREEN}[{i}/{len(urls)}] {self.translations[self.lang]['opening'].format(url_with_lang)}{Style.RESET_ALL}")
                 
                 # Ouvrir l'URL dans le navigateur
                 webbrowser.open(url_with_lang)
@@ -331,7 +331,7 @@ class GiveawayChecker:
                 
                 # Attendre le temps spécifié
                 for remaining in range(int(seconds_per_url), 0, -1):
-                    print(f"\r{Fore.YELLOW}Attente: {remaining}s{Style.RESET_ALL}", end='')
+                    print(f"\r{Fore.YELLOW}{self.translations[self.lang]['waiting'].format(remaining)}{Style.RESET_ALL}", end='')
                     time.sleep(1)
                 print("\r" + " " * 20 + "\r", end='')  # Effacer la ligne d'attente
                 
@@ -344,15 +344,17 @@ class GiveawayChecker:
                 error_count += 1
                 logging.error(f"Erreur lors de l'ouverture de l'URL {url}: {e}")
         
-        print(f"\n{Fore.GREEN}Terminé! {success_count} URLs ouvertes avec succès, {error_count} erreurs.{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}Durée totale: environ {len(urls) * seconds_per_url} secondes{Style.RESET_ALL}")
+        print(f"\n{Fore.GREEN}{self.translations[self.lang]['finished'].format(success_count, error_count)}{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}{self.translations[self.lang]['total_duration'].format(len(urls) * seconds_per_url)}{Style.RESET_ALL}")
         
         return success_count, error_count
 
 
 def show_welcome_message(version):
     """Affiche un message de bienvenue avec la version et des infos système"""
-    system_info = platform.system() + " " + platform.release()
+    system = platform.system()
+    system_version = platform.release()
+    system_info = f"{system} {system_version}"
     python_version = platform.python_version()
     
     ascii_art = random.choice(ASCII_LOGO)
@@ -368,9 +370,13 @@ def get_lang(translations, config):
     """Demande la langue à l'utilisateur ou utilise celle en configuration"""
     try:
         default_lang = config.get('DEFAULT', 'language', fallback='en')
-        print(f"{Fore.YELLOW}Langue actuelle: {default_lang}{Style.RESET_ALL}")
+        # Initialize with English translations for this initial prompt
+        current_lang_message = translations['en']['current_language'].format(default_lang)
+        change_lang_message = translations['en']['change_language']
         
-        change_lang = input(f"{Fore.CYAN}Voulez-vous changer la langue? (o/n): {Style.RESET_ALL}").lower()
+        print(f"{Fore.YELLOW}{current_lang_message}{Style.RESET_ALL}")
+        
+        change_lang = input(f"{Fore.CYAN}{change_lang_message}{Style.RESET_ALL}").lower()
         if change_lang in ['o', 'y', 'oui', 'yes']:
             langchoice = input(f"\n{Fore.CYAN}Language (fr/en/es/de/pt/it/pl): {Style.RESET_ALL}")
             if langchoice not in list(translations.keys()):
@@ -393,9 +399,9 @@ def get_lang(translations, config):
 def get_seconds_per_url(lang, translations, config):
     """Demande le temps entre chaque URL ou utilise celui en configuration"""
     default_seconds = float(config.get('DEFAULT', 'seconds_per_url', fallback='3.0'))
-    print(f"{Fore.YELLOW}Temps actuel entre les URLs: {default_seconds}s{Style.RESET_ALL}")
+    print(f"{Fore.YELLOW}{translations[lang]['current_time'].format(default_seconds)}{Style.RESET_ALL}")
     
-    change_seconds = input(f"{Fore.CYAN}Voulez-vous changer ce temps? (o/n): {Style.RESET_ALL}").lower()
+    change_seconds = input(f"{Fore.CYAN}{translations[lang]['change_time']}{Style.RESET_ALL}").lower()
     if change_seconds in ['o', 'y', 'oui', 'yes']:
         while True:
             try:
@@ -448,7 +454,7 @@ async def main():
         if update_choice.lower() in ['yes', 'oui', 'y', 'o', 'sí', 'si', 'ja']:
             valid_urls = await checker.update_giveaways_async('List-Uncheck.csv', lang)
             if valid_urls:
-                use_valid = input(f"\n{Fore.CYAN}Voulez-vous utiliser les URLs valides trouvées? (o/n): {Style.RESET_ALL}").lower()
+                use_valid = input(f"\n{Fore.CYAN}{translations[lang]['use_valid_urls']}{Style.RESET_ALL}").lower()
                 if use_valid in ['o', 'y', 'oui', 'yes']:
                     urls = valid_urls
                     file_name = None
@@ -483,12 +489,12 @@ async def main():
         print(f"\n{Fore.GREEN}{translations[lang]['endmessage'].format(success, len(urls) * seconds_between_urls)}{Style.RESET_ALL}")
         
         # Afficher un résumé
-        print(f"\n{Fore.CYAN}Résumé de la session:{Style.RESET_ALL}")
-        print(f"- {Fore.GREEN}URLs traitées: {len(urls)}{Style.RESET_ALL}")
-        print(f"- {Fore.GREEN}Succès: {success}{Style.RESET_ALL}")
-        print(f"- {Fore.RED}Erreurs: {errors}{Style.RESET_ALL}")
+        print(f"\n{Fore.CYAN}{translations[lang]['summary']}{Style.RESET_ALL}")
+        print(f"- {Fore.GREEN}{translations[lang]['urls_processed'].format(len(urls))}{Style.RESET_ALL}")
+        print(f"- {Fore.GREEN}{translations[lang]['success'].format(success)}{Style.RESET_ALL}")
+        print(f"- {Fore.RED}{translations[lang]['errors'].format(errors)}{Style.RESET_ALL}")
         
-        input(f"\n{Fore.CYAN}Appuyez sur Entrée pour quitter...{Style.RESET_ALL}")
+        input(f"\n{Fore.CYAN}{translations[lang]['press_enter']}{Style.RESET_ALL}")
         
     except Exception as e:
         print(f"{Fore.RED}Une erreur inattendue s'est produite: {str(e)}{Style.RESET_ALL}")
