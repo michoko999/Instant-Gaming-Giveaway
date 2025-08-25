@@ -1,6 +1,12 @@
 # Instant Gaming Giveaway Tool
 
-[![English](https://img.shields.io/badge/Language-English-blue)](README.md) [![Français](https://img.shields.io/badge/Langue-Fran%C3%A7ais-blue)](README-FR.md)
+<div align="center">
+
+📖 This README is available in:  
+[<img src="https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg" height="15"> English](README.md) | 
+[<img src="https://upload.wikimedia.org/wikipedia/en/c/c3/Flag_of_France.svg" height="15"> Français](README-FR.md)
+
+</div>
 
 ## Overview
 The Instant Gaming Giveaway Tool is an automated Python script that helps you participate in Instant Gaming contests by periodically checking the list of available giveaways. Perfect for gamers who want to increase their chances of winning games!
@@ -72,4 +78,5 @@ This project is licensed under the MIT License. See the LICENSE file for details
 
 ---
 For additional information or support in French, click on the French badge at the top of this document or access the [French documentation (README-FR.md)](README-FR.md).
+
 
