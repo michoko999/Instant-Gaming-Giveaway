@@ -21,7 +21,6 @@ The Instant Gaming Giveaway Tool is an automated Python script that helps you pa
 - ⏰ **Customizable Check Intervals**
 - 🔄 **Preference Saving** - Persistent configuration
 - 📝 **Participation History** - Keep track of your contests
-- 💪 **Robust** - Better error handling
 - ✅ **Intelligent Contest Validation**:
   - Automatically detects active contests
   - Checks contest availability
@@ -29,7 +28,7 @@ The Instant Gaming Giveaway Tool is an automated Python script that helps you pa
 
 ## 📋 Requirements
 - Python 3.8 or higher
-- Web browser (Chrome recommended)
+- Web browser
 - Internet connection
 
 ## 📥 Installation
@@ -66,7 +65,7 @@ If you want to create an executable (.exe) version of the application:
 ## 📁 File Structure
 - `Giveaway_IG.py`: Main program file
 - `traduction.json`: Contains translations for multiple languages
-- `List-Uncheck.csv`: Default list of URLs to check
+- `List-Uncheck.csv`: Default list of URLs to check. Some contests may be sourced from [this contest list](https://github.com/enzomtpYT/InstantGamingGiveawayList).
 - `valid_urls.csv`: List of valid giveaway URLs
 - `invalid_urls.csv`: List of expired or invalid URLs
 - `unknown_urls.csv`: List of URLs with unknown status
@@ -81,6 +80,3 @@ This project is licensed under the MIT License. See the LICENSE file for details
 
 ---
 For additional information or support in French, click on the French badge at the top of this document or access the [French documentation (README-FR.md)](README-FR.md).
-
-
-
