@@ -55,9 +55,8 @@ If you want to create an executable (.exe) version of the application:
 > To achieve a portable-executable format, the application is packaged with PyInstaller into an `EXE`. Some antivirus engines (including Windows Defender) might report the packaged executable as a trojan, because PyInstaller has been used by others to package malicious Python code in the past. These reports can be safely ignored. If you absolutely do not trust the executable, you'll have to install Python yourself and run everything from source.
 
 ## 🚀 Usage
-
-> **Note:** This program has no affiliation with Instant Gaming, unlike other tools/contest lists.
-> 
+> [!NOTE]
+> This program has no affiliation with Instant Gaming, unlike other tools/contest lists.
 
 1. Run the program using `run.bat` or by executing `python Giveaway_IG.py`
 2. Select your preferred language
@@ -84,3 +83,4 @@ This project is licensed under the MIT License. See the LICENSE file for details
 
 ---
 For additional information or support in French, click on the French badge at the top of this document or access the [French documentation (README-FR.md)](README-FR.md).
+
