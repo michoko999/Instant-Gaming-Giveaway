@@ -37,6 +37,9 @@ The Instant Gaming Giveaway Tool is an automated Python script that helps you pa
 3. Or manually install dependencies with: `pip install -r requirements.txt`
 
 ## 🛠️ Compiling to Executable
+> [!NOTE]
+> To achieve a portable-executable format, the application is packaged with PyInstaller into an `EXE`. Some antivirus engines (including Windows Defender) might report the packaged executable as a trojan, because PyInstaller has been used by others to package malicious Python code in the past. These reports can be safely ignored. If you absolutely do not trust the executable, you'll have to install Python yourself and run everything from source.
+
 If you want to create an executable (.exe) version of the application:
 
 1. Make sure you have PyInstaller installed:
@@ -50,9 +53,6 @@ If you want to create an executable (.exe) version of the application:
    ```
 
 3. Find the compiled executable in the `dist` folder
-
-> [!NOTE]
-> To achieve a portable-executable format, the application is packaged with PyInstaller into an `EXE`. Some antivirus engines (including Windows Defender) might report the packaged executable as a trojan, because PyInstaller has been used by others to package malicious Python code in the past. These reports can be safely ignored. If you absolutely do not trust the executable, you'll have to install Python yourself and run everything from source.
 
 ## 🚀 Usage
 > [!NOTE]
@@ -83,4 +83,5 @@ This project is licensed under the MIT License. See the LICENSE file for details
 
 ---
 For additional information or support in French, click on the French badge at the top of this document or access the [French documentation (README-FR.md)](README-FR.md).
+
 
