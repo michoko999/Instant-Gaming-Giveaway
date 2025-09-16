@@ -53,6 +53,9 @@ Si vous souhaitez créer une version exécutable (.exe) de l'application :
 3. Trouvez l'exécutable compilé dans le dossier `dist`
 
 ## 🚀 Utilisation
+
+> **Note :** Ce programme ne contient aucun lien d'affiliation avec Instant Gaming, contrairement à d'autres outils/listes de concours.
+
 1. Lancez le programme en utilisant `run.bat` ou en exécutant `python Giveaway_IG.py`
 2. Sélectionnez votre langue préférée
 3. Choisissez un fichier CSV contenant les URLs des concours (par défaut : List-Uncheck.csv)

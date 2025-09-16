@@ -360,7 +360,7 @@ class GiveawayChecker:
                 
             print(f"{Fore.CYAN}Nombre d'URLs à vérifier: {len(urls)}{Style.RESET_ALL}")
             if len(urls) < len(all_urls):
-                print(f"{Fore.YELLOW}{len(all_urls) - len(urls)} doublons ont été éliminés.{Style.RESET_ALL}")
+                logging.debug(f"{len(all_urls) - len(urls)} doublons ont été éliminés.")
                 
         except Exception as e:
             print(f"{Fore.RED}Erreur lors de la lecture du fichier CSV: {e}{Style.RESET_ALL}")
@@ -390,9 +390,9 @@ class GiveawayChecker:
                 else:
                     unknown_urls.append(url)
         
-        print(f"\n{Fore.GREEN}{self.translations[lang]['valid_giveaways'].format(len(valid_urls))}{Style.RESET_ALL}")
-        print(f"{Fore.RED}{self.translations[lang]['invalid_giveaways'].format(len(invalid_urls))}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}{self.translations[lang]['unknown_giveaways'].format(len(unknown_urls))}{Style.RESET_ALL}")
+        print(f"\n{Fore.GREEN}Concours valides: {len(valid_urls)}{' (Fichier valid_urls.csv sauvegardé)' if valid_urls else ''}{Style.RESET_ALL}")
+        print(f"{Fore.RED}Concours invalides: {len(invalid_urls)}{' (Fichier invalid_urls.csv sauvegardé)' if invalid_urls else ''}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Concours inconnus: {len(unknown_urls)}{' (Fichier unknown_urls.csv sauvegardé)' if unknown_urls else ''}{Style.RESET_ALL}")
         
         # Sauvegarder dans le dossier temporaire si en mode exécutable
         if getattr(sys, 'frozen', False):
@@ -404,26 +404,36 @@ class GiveawayChecker:
             invalid_urls_path = os.path.join(temp_dir, 'invalid_urls.csv')
             unknown_urls_path = os.path.join(temp_dir, 'unknown_urls.csv')
             
-            self._save_urls_to_csv(valid_urls_path, valid_urls)
-            self._save_urls_to_csv(invalid_urls_path, invalid_urls)
-            self._save_urls_to_csv(unknown_urls_path, unknown_urls)
+            if valid_urls:
+                self._save_urls_to_csv(valid_urls_path, valid_urls)
+            if invalid_urls:
+                self._save_urls_to_csv(invalid_urls_path, invalid_urls)
+            if unknown_urls:  # Ne créer le fichier que s'il y a des URLs inconnues
+                self._save_urls_to_csv(unknown_urls_path, unknown_urls)
             
             # Important: Afficher les chemins des fichiers sauvegardés pour le débogage
             logging.debug(f"Fichiers sauvegardés dans le dossier temporaire: {temp_dir}")
             logging.debug(f"valid_urls.csv: {valid_urls_path}")
             logging.debug(f"invalid_urls.csv: {invalid_urls_path}")
-            logging.debug(f"unknown_urls.csv: {unknown_urls_path}")
+            if unknown_urls:
+                logging.debug(f"unknown_urls.csv: {unknown_urls_path}")
             print(f"{Fore.GREEN}Fichiers sauvegardés dans: {temp_dir}{Style.RESET_ALL}")
         else:
             # En mode développement, utiliser le répertoire courant
-            self._save_urls_to_csv('valid_urls.csv', valid_urls)
-            self._save_urls_to_csv('invalid_urls.csv', invalid_urls)
-            self._save_urls_to_csv('unknown_urls.csv', unknown_urls)
+            if valid_urls:
+                self._save_urls_to_csv('valid_urls.csv', valid_urls)
+            if invalid_urls:
+                self._save_urls_to_csv('invalid_urls.csv', invalid_urls)
+            if unknown_urls:  # Ne créer le fichier que s'il y a des URLs inconnues
+                self._save_urls_to_csv('unknown_urls.csv', unknown_urls)
             
         return valid_urls
     
     def _save_urls_to_csv(self, filename, urls):
         """Sauvegarde une liste d'URLs dans un fichier CSV"""
+        if not urls:  # Ne pas créer le fichier si la liste est vide
+            return
+            
         try:
             # Assurer que le dossier parent existe
             parent_dir = os.path.dirname(filename)
@@ -451,7 +461,6 @@ class GiveawayChecker:
                     writer.writerow([url])
             
             logging.debug(f"Fichier sauvegardé avec succès: {filename} ({len(urls)} URLs)")
-            print(f"{Fore.GREEN}Fichier {os.path.basename(filename)} sauvegardé avec {len(urls)} URLs{Style.RESET_ALL}")
             
         except Exception as e:
             print(f"{Fore.RED}Erreur lors de la sauvegarde du fichier {filename}: {e}{Style.RESET_ALL}")
@@ -680,7 +689,7 @@ async def main():
             return
         
         # Ajouter une information sur la non-affiliation
-        print(f"\n{Fore.YELLOW}Note: Ce programme ne contient aucun lien d'affiliation avec Instant Gaming, contrairement à d'autres outils/listes de concours.{Style.RESET_ALL}")
+        print(f"\n{Fore.YELLOW}Note: This program has no affiliation with Instant Gaming, unlike other tools/contest lists.{Style.RESET_ALL}")
         
         # Obtenir la langue
         lang = get_lang(translations, config)
@@ -726,10 +735,12 @@ async def main():
                     logging.error(error_message)
                     logging.exception("Détails de l'erreur:")
             
-            # Toujours récupérer les liens depuis GitHub
+            # Toujours récupérer les liens depuis GitHub (sources multiples)
             print(f"\n{Fore.CYAN}Récupération des liens depuis GitHub...{Style.RESET_ALL}")
-            github_url = "https://raw.githubusercontent.com/enzomtpYT/InstantGamingGiveawayList/refs/heads/main/json.json"
-            logging.debug(f"Tentative de récupération des données depuis: {github_url}")
+            github_url_json = "https://raw.githubusercontent.com/enzomtpYT/InstantGamingGiveawayList/refs/heads/main/json.json"
+            github_url_csv = "https://raw.githubusercontent.com/michoko999/Instant-Gaming-Giveaway/refs/heads/main/List-Uncheck.csv"
+            logging.debug(f"Tentative de récupération des données JSON depuis: {github_url_json}")
+            logging.debug(f"Tentative de récupération des données CSV depuis: {github_url_csv}")
             
             use_remote = True
             use_local = False
@@ -749,52 +760,75 @@ async def main():
                         print(f"{Fore.YELLOW}Pas de liste existante trouvée. Création d'une nouvelle liste.{Style.RESET_ALL}")
                         logging.debug(f"Erreur de lecture du fichier existant: {str(e)}")
                     
-                    # Récupérer et traiter les données JSON (soit depuis GitHub, soit depuis un fichier local)
+                    all_github_urls = []
+                    
+                    # 1. Récupérer et traiter les données JSON (enzomtpYT)
                     github_data = {}
                     if use_remote:
-                        response = requests.get(github_url)
-                        response.raise_for_status()
-                        github_data = response.json()
-                        print(f"{Fore.GREEN}Données récupérées depuis GitHub avec succès.{Style.RESET_ALL}")
+                        try:
+                            response = requests.get(github_url_json)
+                            response.raise_for_status()
+                            github_data = response.json()
+                            print(f"{Fore.GREEN}Données JSON récupérées depuis enzomtpYT avec succès.{Style.RESET_ALL}")
+                        except Exception as e:
+                            print(f"{Fore.YELLOW}Erreur lors de la récupération des données JSON: {e}{Style.RESET_ALL}")
+                            logging.error(f"Erreur lors de la récupération des données JSON: {e}")
                     elif use_local:
                         with open(json_path, "r", encoding="utf-8") as json_file:
                             github_data = json.load(json_file)
                         print(f"{Fore.GREEN}Données chargées depuis le fichier local avec succès.{Style.RESET_ALL}")
-                    
-                    github_urls = []
                     
                     # Traiter les concours actifs (alive) du JSON
                     if "alive" in github_data and isinstance(github_data["alive"], list):
                         alive_usernames = github_data["alive"]
                         for username in alive_usernames:
                             # Créer l'URL pour chaque nom d'utilisateur
-                            github_urls.append(f"https://www.instant-gaming.com/{lang}/giveaway/{username.upper()}")
+                            all_github_urls.append(f"https://www.instant-gaming.com/{lang}/giveaway/{username.upper()}")
                         
-                        print(f"{Fore.GREEN}Nombre de concours actifs trouvés: {len(alive_usernames)}{Style.RESET_ALL}")
-                        logging.debug(f"Nombre de concours actifs trouvés: {len(alive_usernames)}")
+                        logging.debug(f"Concours actifs trouvés (enzomtpYT): {len(alive_usernames)}")
                     else:
-                        print(f"{Fore.YELLOW}Aucun concours actif trouvé dans les données JSON ou format incorrect{Style.RESET_ALL}")
-                        logging.warning("Aucun concours actif trouvé dans les données JSON ou format incorrect")
+                        print(f"{Fore.YELLOW}Aucun concours actif trouvé dans les données JSON enzomtpYT{Style.RESET_ALL}")
+                        logging.warning("Aucun concours actif trouvé dans les données JSON enzomtpYT")
+                    
+                    # 2. Récupérer les données CSV (michoko999)
+                    michoko_urls = []
+                    if use_remote:
+                        try:
+                            response = requests.get(github_url_csv)
+                            response.raise_for_status()
+                            csv_content = response.text
+                            
+                            # Parser le contenu CSV
+                            csv_reader = csv.reader(csv_content.splitlines())
+                            michoko_urls = [row[0] for row in csv_reader if row and row[0].strip()]
+                            
+                            print(f"{Fore.GREEN}Données CSV récupérées depuis michoko999 avec succès.{Style.RESET_ALL}")
+                            logging.debug(f"Concours trouvés (michoko999): {len(michoko_urls)}")
+                            
+                            # Ajouter les URLs de michoko999 à la liste totale
+                            all_github_urls.extend(michoko_urls)
+                            
+                        except Exception as e:
+                            print(f"{Fore.YELLOW}Erreur lors de la récupération des données CSV michoko999: {e}{Style.RESET_ALL}")
+                            logging.error(f"Erreur lors de la récupération des données CSV michoko999: {e}")
                     
                     # Optionnel: traiter également les concours terminés pour référence
                     if "dead" in github_data and isinstance(github_data["dead"], list):
                         dead_usernames = github_data["dead"]
-                        print(f"{Fore.YELLOW}Nombre de concours terminés trouvés: {len(dead_usernames)}{Style.RESET_ALL}")
-                        logging.debug(f"Nombre de concours terminés trouvés: {len(dead_usernames)}")
+                        logging.debug(f"Concours terminés trouvés (enzomtpYT): {len(dead_usernames)}")
                     
-                    total_github_urls = len(github_urls)
+                    total_github_urls = len(all_github_urls)
                     logging.debug(f"URLs totales générées: {total_github_urls}")
-                    print(f"{Fore.CYAN}URLs totales générées: {total_github_urls}{Style.RESET_ALL}")
                     
                     # Compter combien de nouvelles URLs seront ajoutées
                     existing_urls_set = set(existing_urls)
-                    github_urls_set = set(github_urls)
+                    github_urls_set = set(all_github_urls)
                     new_urls = github_urls_set - existing_urls_set
                     new_urls_count = len(new_urls)
                     
                     # S'assurer que les URL sont normalisées pour éviter les doublons
                     existing_urls_normalized = [url.strip().lower() for url in existing_urls]
-                    github_urls_normalized = [url.strip().lower() for url in github_urls]
+                    github_urls_normalized = [url.strip().lower() for url in all_github_urls]
                     
                     # Éliminer les doublons en utilisant des ensembles
                     existing_urls_set = set(existing_urls_normalized)
@@ -806,13 +840,12 @@ async def main():
                     print(f"{Fore.CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Style.RESET_ALL}")
                     print(f"{Fore.YELLOW}Total des concours sur GitHub: {total_github_urls}{Style.RESET_ALL}")
                     print(f"{Fore.YELLOW}Concours dans votre liste actuelle: {len(existing_urls)}{Style.RESET_ALL}")
-                    print(f"{Fore.GREEN}Nouveaux concours à ajouter: {new_urls_count}{Style.RESET_ALL}")
                     print(f"{Fore.CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Style.RESET_ALL}")
                     
                     # Fusionner les listes, éliminer les doublons tout en préservant la casse originale des URL
                     # Créer un dictionnaire de correspondance entre les URLs normalisées et les URLs originales
                     url_mapping = {}
-                    for url in existing_urls + github_urls:
+                    for url in existing_urls + all_github_urls:
                         url_mapping[url.strip().lower()] = url
                     
                     # Obtenir la liste finale sans doublons, en préservant la casse originale
@@ -829,7 +862,6 @@ async def main():
                     else:
                         print(f"{Fore.YELLOW}Votre liste est déjà à jour. Aucun nouveau concours trouvé.{Style.RESET_ALL}")
                     
-                    print(f"{Fore.GREEN}Liens GitHub fusionnés avec succès. Total: {len(all_urls)} URLs{Style.RESET_ALL}")
                     logging.debug(f"Liste fusionnée écrite avec succès. Total: {len(all_urls)} URLs")
                 except Exception as e:
                     error_message = f"Erreur lors de la récupération ou du traitement des liens: {str(e)}"
@@ -853,13 +885,11 @@ async def main():
                 if file_size == 0:
                     print(f"{Fore.YELLOW}Le fichier {list_uncheck_path} est vide. Récupération des liens depuis GitHub recommandée.{Style.RESET_ALL}")
                     
-                print(f"{Fore.CYAN}Démarrage de la vérification asynchrone des concours...{Style.RESET_ALL}")
                 # Ajouter un délai visible pour montrer que le processus commence
                 time.sleep(2)
                 
                 try:
                     valid_urls = await checker.update_giveaways_async(list_uncheck_path, lang)
-                    print(f"{Fore.CYAN}Vérification asynchrone terminée.{Style.RESET_ALL}")
                     
                     if valid_urls and len(valid_urls) > 0:
                         print(f"{Fore.GREEN}Vérification terminée avec succès ! {len(valid_urls)} concours valides trouvés.{Style.RESET_ALL}")
@@ -881,7 +911,6 @@ async def main():
             # Utiliser des URLs valides ou un fichier
             if valid_urls and len(valid_urls) > 0:
                 try:
-                    print(f"\n{Fore.GREEN}URLs valides trouvées: {len(valid_urls)}{Style.RESET_ALL}")
                     use_valid = input(f"{Fore.CYAN}{translations[lang]['use_valid_urls']}{Style.RESET_ALL} ").lower()
                     logging.debug(f"Réponse pour utiliser les URLs valides: {use_valid}")
                     
