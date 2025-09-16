@@ -22,6 +22,7 @@ import platform
 import configparser
 import logging
 import sys
+from urllib.parse import urlparse
 
 # Initialisation de colorama pour les couleurs dans le terminal
 init()
@@ -31,6 +32,24 @@ init()
 # Variables globales
 VERSION = "1.3.0"
 translations = None
+
+def is_valid_instant_gaming_url(url):
+    """Valide de manière sécurisée si une URL appartient à Instant Gaming"""
+    try:
+        parsed_url = urlparse(url)
+        # Vérifier que le scheme est https ou http
+        if parsed_url.scheme not in ['http', 'https']:
+            return False
+        
+        # Vérifier que le hostname est exactement instant-gaming.com ou ses sous-domaines légitimes
+        hostname = parsed_url.hostname
+        if not hostname:
+            return False
+            
+        # Accepter instant-gaming.com et ses sous-domaines (comme www.instant-gaming.com)
+        return hostname == 'instant-gaming.com' or hostname.endswith('.instant-gaming.com')
+    except Exception:
+        return False
 
 # Affichage des informations de version au démarrage
 print(f"\nInstant Gaming Giveaway Tool v{VERSION}")
@@ -239,7 +258,7 @@ class GiveawayChecker:
         
         # Ajustement de l'URL pour correspondre à la langue
         original_url = url
-        if 'instant-gaming.com' in url:
+        if is_valid_instant_gaming_url(url):
             url = re.sub(r'/[a-z]{2}/', f'/{lang_param}/', url)
             logging.debug(f"URL ajustée pour la langue: {url}")
 
@@ -542,7 +561,7 @@ class GiveawayChecker:
         for i, url in enumerate(urls, 1):
             try:
                 # Ajuster l'URL en fonction de la langue
-                if 'instant-gaming.com' in url:
+                if is_valid_instant_gaming_url(url):
                     url_with_lang = re.sub(r'/[a-z]{2}/', f'/{lang_param}/', url)
                 else:
                     url_with_lang = url
