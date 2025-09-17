@@ -1,0 +1,100 @@
+name: PyLint Analysis Fixed
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: [ '**.py' ]
+  pull_request:
+    branches: [ main ]
+    paths: [ '**.py' ]
+  workflow_dispatch:
+
+jobs:
+  pylint-analysis:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+      fail-fast: false  # Continue même si une version échoue
+      
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pylint
+
+    - name: Test import
+      run: |
+        python -c "import giveaway_ig; print('✅ Import successful for Python ${{ matrix.python-version }}')"
+
+    - name: Run PyLint Analysis
+      run: |
+        echo "## PyLint Analysis - Python ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Exécuter PyLint avec gestion d'erreur
+        pylint giveaway_ig.py --score=yes > pylint_report_${{ matrix.python-version }}.txt 2>&1 || true
+        
+        # Extraire et afficher le score
+        if grep -q "Your code has been rated at" pylint_report_${{ matrix.python-version }}.txt; then
+          SCORE=$(grep "Your code has been rated at" pylint_report_${{ matrix.python-version }}.txt | grep -o "[0-9]\+\.[0-9]\+/10" | head -1)
+          echo "**Score PyLint**: $SCORE" >> $GITHUB_STEP_SUMMARY
+          
+          # Vérifier si le score est acceptable
+          NUMERIC_SCORE=$(echo "$SCORE" | cut -d'/' -f1)
+          if (( $(echo "$NUMERIC_SCORE >= 6.0" | bc -l 2>/dev/null || echo 0) )); then
+            echo "✅ **Statut**: Score acceptable ($SCORE >= 6.0/10)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Statut**: Score en dessous du seuil ($SCORE < 6.0/10)" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "❌ **Erreur**: Impossible d'extraire le score PyLint" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "<details><summary>Rapport PyLint complet</summary>" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        cat pylint_report_${{ matrix.python-version }}.txt >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "</details>" >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload PyLint report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: pylint-report-python-${{ matrix.python-version }}
+        path: pylint_report_${{ matrix.python-version }}.txt
+        retention-days: 30
+
+  summary:
+    runs-on: ubuntu-latest
+    needs: pylint-analysis
+    if: always()
+    
+    steps:
+    - name: Analysis Summary
+      run: |
+        echo "## Résumé de l'analyse PyLint" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.pylint-analysis.result }}" == "success" ]; then
+          echo "✅ **Analyse PyLint terminée avec succès**" >> $GITHUB_STEP_SUMMARY
+          echo "- Toutes les versions de Python ont été testées" >> $GITHUB_STEP_SUMMARY
+          echo "- Les rapports détaillés sont disponibles dans les artifacts" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ **Analyse PyLint terminée avec des avertissements**" >> $GITHUB_STEP_SUMMARY
+          echo "- Vérifiez les rapports individuels pour plus de détails" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Note**: Ce workflow ne fait pas échouer le build même en cas de score bas." >> $GITHUB_STEP_SUMMARY
+        echo "Il fournit des informations pour l'amélioration de la qualité du code." >> $GITHUB_STEP_SUMMARY

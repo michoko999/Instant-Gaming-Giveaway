@@ -61,7 +61,7 @@ jobs:
         # Test que l'exécutable démarre sans erreur critique
         # Utilisation d'un timeout pour éviter que le programme attende une entrée utilisateur
         $job = Start-Job -ScriptBlock {
-          & "dist/Giveaway_IG.exe" 2>&1
+          & ".\dist\Giveaway_IG.exe" 2>&1
         }
 
         # Attendre maximum 15 secondes
