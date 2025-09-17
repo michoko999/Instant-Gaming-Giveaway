@@ -64,10 +64,6 @@ def is_valid_instant_gaming_url(url):
     except Exception:
         return False
 
-# Affichage des informations de version au démarrage
-print(f"\nInstant Gaming Giveaway Tool v{VERSION}")
-print(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')} | Exécutant les vérifications...")
-
 # Fonction pour obtenir les chemins corrects des ressources, que ce soit en mode développement ou en mode exécutable
 def resource_path(relative_path):
     """ Récupère le chemin absolu vers une ressource, fonctionne pour le développement et pour PyInstaller """
@@ -681,6 +677,10 @@ def get_ready(lang, translations_dict):
 async def main():
     """Fonction principale asynchrone"""
     try:
+        # Affichage des informations de version au démarrage
+        print(f"\nInstant Gaming Giveaway Tool v{VERSION}")
+        print(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')} | Exécutant les vérifications...")
+        
         # Configurer le logging avec le bon chemin du fichier de log
         logging.basicConfig(
             level=logging.DEBUG,  # Augmenter le niveau de logging pour voir tous les messages
