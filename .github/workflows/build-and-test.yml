@@ -43,7 +43,15 @@ jobs:
 
     - name: Build Windows executable
       run: |
+        echo "Starting PyInstaller build..."
         pyinstaller --onefile --icon=Magic.ico --name="Giveaway_IG" --add-data "config.ini;." --add-data "traduction.json;." --add-data "List-Uncheck.csv;." --version-file=file_version_info.txt giveaway_ig.py
+        echo "PyInstaller completed. Checking if executable was created..."
+        if (Test-Path "dist") { 
+          Get-ChildItem "dist" 
+        } else { 
+          echo "dist directory not found!" 
+        }
+      shell: powershell
 
     - name: Test executable exists
       run: |
@@ -58,35 +66,40 @@ jobs:
 
     - name: Test executable runs (basic smoke test)
       run: |
-        # Test que l'exécutable démarre sans erreur critique
-        # Utilisation d'un timeout pour éviter que le programme attende une entrée utilisateur
-        $job = Start-Job -ScriptBlock {
-          & ".\dist\Giveaway_IG.exe" 2>&1
-        }
-
-        # Attendre maximum 15 secondes
-        $timeout = 15
-        $completed = $job | Wait-Job -Timeout $timeout
-
-        if ($completed) {
-          $output = Receive-Job $job
-          Write-Output "Executable output:"
-          Write-Output $output
-
-          # Vérifier que l'output contient des éléments attendus
-          $outputString = $output -join " "
-          if ($outputString -match "Instant Gaming Giveaway Tool" -or $outputString -match "v\d+\.\d+\.\d+") {
-            Write-Output "✅ Executable appears to be working correctly"
-          } else {
-            Write-Output "⚠️ Executable started but output seems unexpected"
+        if (Test-Path "dist\Giveaway_IG.exe") {
+          # Test que l'exécutable démarre sans erreur critique
+          # Utilisation d'un timeout pour éviter que le programme attende une entrée utilisateur
+          $job = Start-Job -ScriptBlock {
+            & ".\dist\Giveaway_IG.exe" 2>&1
           }
-        } else {
-          Write-Output "⚠️ Executable test timed out after $timeout seconds (this is expected for interactive programs)"
-          Stop-Job $job
-        }
 
-        Remove-Job $job
-        Write-Output "✅ Smoke test completed"
+          # Attendre maximum 15 secondes
+          $timeout = 15
+          $completed = $job | Wait-Job -Timeout $timeout
+
+          if ($completed) {
+            $output = Receive-Job $job
+            Write-Output "Executable output:"
+            Write-Output $output
+
+            # Vérifier que l'output contient des éléments attendus
+            $outputString = $output -join " "
+            if ($outputString -match "Instant Gaming Giveaway Tool" -or $outputString -match "v\d+\.\d+\.\d+") {
+              Write-Output "✅ Executable appears to be working correctly"
+            } else {
+              Write-Output "⚠️ Executable started but output seems unexpected"
+            }
+          } else {
+            Write-Output "⚠️ Executable test timed out after $timeout seconds (this is expected for interactive programs)"
+            Stop-Job $job
+          }
+
+          Remove-Job $job
+          Write-Output "✅ Smoke test completed"
+        } else {
+          Write-Output "❌ Executable not found, skipping smoke test"
+          exit 1
+        }
       shell: powershell
 
     - name: Upload executable artifact
