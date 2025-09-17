@@ -16,6 +16,12 @@ on:
         type: boolean
         default: false
 
+# Permissions spécifiques pour la création de releases
+permissions:
+  contents: write         # Nécessaire pour créer des releases et uploader des assets
+  actions: read          # Lecture des actions et workflows
+  # contents: write est le minimum requis pour les releases
+
 jobs:
   build-executables:
     strategy:

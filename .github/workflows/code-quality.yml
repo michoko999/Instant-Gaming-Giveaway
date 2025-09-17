@@ -11,6 +11,12 @@ on:
       - '**.py'
   workflow_dispatch:
 
+# Permissions minimales selon le principe de moindre privilège
+permissions:
+  contents: read          # Lecture du code source
+  actions: read          # Lecture des actions et workflows
+  # Pas de write permissions - ce workflow ne modifie pas le repository
+
 jobs:
   code-quality:
     runs-on: ubuntu-latest

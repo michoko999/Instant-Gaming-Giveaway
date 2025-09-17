@@ -105,9 +105,17 @@ Après chaque build, vous pouvez télécharger :
 ## 🔧 Configuration requise
 
 ### Permissions GitHub
-Les workflows nécessitent ces permissions :
-- `contents: write` (pour créer des releases)
-- `actions: read` (pour lire les workflows)
+Les workflows suivent le principe de **moindre privilège** avec des permissions explicites :
+
+**🔒 Permissions Read-Only (workflows d'analyse) :**
+- `contents: read` - Lecture du code source uniquement
+- `actions: read` - Lecture des actions et workflows
+
+**✏️ Permissions Write Limitées (workflow de release) :**
+- `contents: write` - Nécessaire pour créer des releases et uploader des assets
+- `actions: read` - Lecture des actions et workflows
+
+Cette approche sécurisée limite les risques d'exploitation malveillante et respecte les standards de sécurité industriels.
 
 ### Secrets (optionnels)
 - `GITHUB_TOKEN` : Automatiquement fourni par GitHub
