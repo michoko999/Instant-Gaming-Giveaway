@@ -680,7 +680,7 @@ async def main():
         # Affichage des informations de version au démarrage
         print(f"\nInstant Gaming Giveaway Tool v{VERSION}")
         print(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')} | Exécutant les vérifications...")
-        
+
         # Configurer le logging avec le bon chemin du fichier de log
         logging.basicConfig(
             level=logging.DEBUG,  # Augmenter le niveau de logging pour voir tous les messages
