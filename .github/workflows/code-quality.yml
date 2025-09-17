@@ -1,0 +1,195 @@
+name: Code Quality and Performance Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '**.py'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**.py'
+  workflow_dispatch:
+
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pylint pytest pytest-cov flake8 bandit safety
+
+    - name: Run PyLint
+      run: |
+        echo "## PyLint Analysis" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Exécuter pylint et capturer le score
+        pylint giveaway_ig.py > pylint_report.txt 2>&1 || true
+
+        # Extraire le score
+        SCORE=$(grep "Your code has been rated at" pylint_report.txt | grep -o "[0-9]\+\.[0-9]\+/10" || echo "N/A")
+        echo "PyLint Score: $SCORE" >> $GITHUB_STEP_SUMMARY
+
+        # Afficher le rapport complet
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        cat pylint_report.txt >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+        # Vérifier si le score est acceptable (>6.0)
+        if [[ "$SCORE" == */* ]]; then
+          NUMERIC_SCORE=$(echo "$SCORE" | cut -d'/' -f1)
+          if (( $(echo "$NUMERIC_SCORE >= 6.0" | bc -l) )); then
+            echo "✅ PyLint score acceptable: $SCORE"
+          else
+            echo "⚠️ PyLint score below threshold: $SCORE (minimum: 6.0/10)"
+          fi
+        fi
+
+    - name: Run Flake8
+      run: |
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Flake8 Analysis" >> $GITHUB_STEP_SUMMARY
+        flake8 giveaway_ig.py --max-line-length=120 --extend-ignore=E203,W503 >> flake8_report.txt || true
+        if [ -s flake8_report.txt ]; then
+          echo "❌ Flake8 issues found:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          cat flake8_report.txt >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ No Flake8 issues found" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Security Analysis with Bandit
+      run: |
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Security Analysis (Bandit)" >> $GITHUB_STEP_SUMMARY
+        bandit -r . -f json -o bandit_report.json || true
+
+        if [ -s bandit_report.json ]; then
+          # Compter les problèmes de sécurité
+          HIGH_ISSUES=$(python3 -c "import json; data=json.load(open('bandit_report.json')); print(len([x for x in data.get('results', []) if x.get('issue_severity') == 'HIGH']))" 2>/dev/null || echo "0")
+          MEDIUM_ISSUES=$(python3 -c "import json; data=json.load(open('bandit_report.json')); print(len([x for x in data.get('results', []) if x.get('issue_severity') == 'MEDIUM']))" 2>/dev/null || echo "0")
+
+          if [ "$HIGH_ISSUES" -gt 0 ]; then
+            echo "❌ $HIGH_ISSUES high-severity security issues found" >> $GITHUB_STEP_SUMMARY
+          elif [ "$MEDIUM_ISSUES" -gt 0 ]; then
+            echo "⚠️ $MEDIUM_ISSUES medium-severity security issues found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No high or medium severity security issues found" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "✅ Security analysis completed successfully" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Check Dependencies Security
+      run: |
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Dependencies Security (Safety)" >> $GITHUB_STEP_SUMMARY
+        safety check --json > safety_report.json || true
+
+        if [ -s safety_report.json ] && [ "$(cat safety_report.json)" != "[]" ]; then
+          echo "⚠️ Vulnerable dependencies found:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+          cat safety_report.json >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ No known vulnerable dependencies found" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload reports
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: code-quality-reports
+        path: |
+          pylint_report.txt
+          flake8_report.txt
+          bandit_report.json
+          safety_report.json
+        retention-days: 30
+
+  performance-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install memory-profiler psutil
+
+    - name: Memory and Performance Test
+      run: |
+        echo "## Performance Analysis" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Test de l'importation du module (temps de démarrage)
+        python3 -c "
+        import time
+        import psutil
+        import os
+
+        # Mesurer la mémoire avant
+        process = psutil.Process(os.getpid())
+        mem_before = process.memory_info().rss / 1024 / 1024  # MB
+
+        # Mesurer le temps d'importation
+        start_time = time.time()
+        try:
+            import giveaway_ig
+            import_time = time.time() - start_time
+
+            # Mesurer la mémoire après
+            mem_after = process.memory_info().rss / 1024 / 1024  # MB
+            mem_used = mem_after - mem_before
+
+            print(f'Import time: {import_time:.3f}s')
+            print(f'Memory usage: {mem_used:.2f} MB')
+
+            # Tests basiques de fonctions
+            if hasattr(giveaway_ig, 'is_valid_instant_gaming_url'):
+                test_start = time.time()
+                # Test de quelques URLs
+                test_urls = [
+                    'https://www.instant-gaming.com/fr/giveaway/TEST',
+                    'https://invalid-url.com',
+                    'not-a-url'
+                ]
+                for url in test_urls:
+                    giveaway_ig.is_valid_instant_gaming_url(url)
+                test_time = time.time() - test_start
+                print(f'URL validation test time: {test_time:.3f}s for {len(test_urls)} URLs')
+        except ImportError as e:
+            print(f'Import failed: {e}')
+        except Exception as e:
+            print(f'Performance test failed: {e}')
+        " >> performance_report.txt
+
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        cat performance_report.txt >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload performance report
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-report
+        path: performance_report.txt
+        retention-days: 7

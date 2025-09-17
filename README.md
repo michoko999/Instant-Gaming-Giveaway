@@ -2,8 +2,8 @@
 
 <div align="center">
 
-📖 This README is available in:  
-[<img src="https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg" height="15"> English](README.md) | 
+📖 This README is available in:
+[<img src="https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg" height="15"> English](README.md) |
 [<img src="https://upload.wikimedia.org/wikipedia/en/c/c3/Flag_of_France.svg" height="15"> Français](README-FR.md)
 
 </div>
@@ -13,7 +13,7 @@ The Instant Gaming Giveaway Tool is an automated Python script that helps you pa
 
 ## ✨ Features
 
-- 🌐 **Multi-language Support**:  
+- 🌐 **Multi-language Support**:
   🇬🇧 English | 🇫🇷 Français | 🇪🇸 Español | 🇩🇪 Deutsch | 🇵🇹 Português | 🇮🇹 Italiano | 🇵🇱 Polski
 - ⚡ **Asynchronous Contest Verification** - Faster than ever!
 - 🎨 **Colorful Interface** - Visually pleasing and informative
@@ -40,7 +40,12 @@ The Instant Gaming Giveaway Tool is an automated Python script that helps you pa
 > [!NOTE]
 > To achieve a portable-executable format, the application is packaged with PyInstaller into an `EXE`. Some antivirus engines (including Windows Defender) might report the packaged executable as a trojan, because PyInstaller has been used by others to package malicious Python code in the past. These reports can be safely ignored. If you absolutely do not trust the executable, you'll have to install Python yourself and run everything from source.
 
-If you want to create an executable (.exe) version of the application:
+> [!IMPORTANT]
+> The executable will be created for your current platform:
+> - **Windows**: Creates `Giveaway_IG.exe` with icon support
+> - **Linux/macOS**: Creates `Giveaway_IG` (without extension) - icon and version file are not supported on these platforms
+
+If you want to create an executable version of the application:
 
 1. Make sure you have PyInstaller installed:
    ```
@@ -49,7 +54,7 @@ If you want to create an executable (.exe) version of the application:
 
 2. Compile the application using:
    ```
-   pyinstaller --onefile --icon=Magic.ico --name="Giveaway_IG" --add-data "config.ini;." --add-data "traduction.json;." --add-data "List-Uncheck.csv;." --version-file=file_version_info.txt Giveaway_IG.py
+   pyinstaller --onefile --icon=Magic.ico --name="Giveaway_IG" --add-data "config.ini;." --add-data "traduction.json;." --add-data "List-Uncheck.csv;." --version-file=file_version_info.txt giveaway_ig.py
    ```
 
 3. Find the compiled executable in the `dist` folder
@@ -58,7 +63,7 @@ If you want to create an executable (.exe) version of the application:
 > [!NOTE]
 > This program has no affiliation with Instant Gaming, unlike other tools/contest lists.
 
-1. Run the program using `run.bat` or by executing `python Giveaway_IG.py`
+1. Run the program using `run.bat` or by executing `python giveaway_ig.py`
 2. Select your preferred language
 3. Choose a CSV file containing the giveaway URLs (default: List-Uncheck.csv)
 4. Set the time interval between each URL
@@ -66,7 +71,7 @@ If you want to create an executable (.exe) version of the application:
 6. Click on the orange "Participate" button in the center of each page
 
 ## 📁 File Structure
-- `Giveaway_IG.py`: Main program file
+- `giveaway_ig.py`: Main program file
 - `traduction.json`: Contains translations for multiple languages
 - `List-Uncheck.csv`: Default list of URLs to check. Some contests may be sourced from [this contest list](https://github.com/enzomtpYT/InstantGamingGiveawayList).
 - `valid_urls.csv`: List of valid giveaway URLs
@@ -83,5 +88,3 @@ This project is licensed under the MIT License. See the LICENSE file for details
 
 ---
 For additional information or support in French, click on the French badge at the top of this document or access the [French documentation (README-FR.md)](README-FR.md).
-
-
