@@ -26,6 +26,21 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
 
+    - name: Verify required files exist
+      run: |
+        Write-Output "Checking required files..."
+        $requiredFiles = @("config.ini", "traduction.json", "List-Uncheck.csv", "giveaway_ig.py", "Magic.ico", "file_version_info.txt")
+        foreach ($file in $requiredFiles) {
+          if (Test-Path $file) {
+            Write-Output "✅ Found: $file"
+          } else {
+            Write-Output "❌ Missing: $file"
+            exit 1
+          }
+        }
+        Write-Output "All required files are present!"
+      shell: powershell
+
     - name: Build Windows executable
       run: |
         pyinstaller --onefile --icon=Magic.ico --name="Giveaway_IG" --add-data "config.ini;." --add-data "traduction.json;." --add-data "List-Uncheck.csv;." --version-file=file_version_info.txt giveaway_ig.py
@@ -107,6 +122,19 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pyinstaller
+
+    - name: Verify required files exist
+      run: |
+        echo "Checking required files..."
+        for file in config.ini traduction.json List-Uncheck.csv giveaway_ig.py Magic.ico; do
+          if [ -f "$file" ]; then
+            echo "✅ Found: $file"
+          else
+            echo "❌ Missing: $file"
+            exit 1
+          fi
+        done
+        echo "All required files are present!"
 
     - name: Build Linux executable
       run: |

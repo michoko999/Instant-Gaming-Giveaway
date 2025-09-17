@@ -1,5 +1,5 @@
-# Configuration et fichiers de données
-config.ini
+# Configuration et fichiers de données (gardons config.ini pour les builds)
+# config.ini  # Commenté pour permettre les builds automatiques
 valid_urls.csv
 invalid_urls.csv
 unknown_urls.csv
