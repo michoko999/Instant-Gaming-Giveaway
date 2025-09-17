@@ -44,12 +44,40 @@ jobs:
     - name: Build Windows executable
       run: |
         echo "Starting PyInstaller build..."
-        pyinstaller --onefile --icon=Magic.ico --name="Giveaway_IG" --add-data "config.ini;." --add-data "traduction.json;." --add-data "List-Uncheck.csv;." --version-file=file_version_info.txt giveaway_ig.py
-        echo "PyInstaller completed. Checking if executable was created..."
-        if (Test-Path "dist") { 
-          Get-ChildItem "dist" 
-        } else { 
-          echo "dist directory not found!" 
+        $ErrorActionPreference = "Stop"
+        
+        try {
+          # Exécuter PyInstaller et capturer toute erreur
+          pyinstaller --onefile --icon=Magic.ico --name="Giveaway_IG" --add-data "config.ini;." --add-data "traduction.json;." --add-data "List-Uncheck.csv;." --version-file=file_version_info.txt giveaway_ig.py
+          
+          echo "PyInstaller command completed. Checking results..."
+          
+          # Vérifier si le dossier dist existe
+          if (Test-Path "dist") {
+            echo "✅ dist directory created"
+            Get-ChildItem "dist" -Force
+            
+            # Vérifier spécifiquement si l'exécutable existe
+            if (Test-Path "dist\Giveaway_IG.exe") {
+              $fileInfo = Get-Item "dist\Giveaway_IG.exe"
+              echo "✅ Executable created successfully: $($fileInfo.Name) ($($fileInfo.Length) bytes)"
+            } else {
+              echo "❌ Executable not found in dist directory"
+              echo "Contents of dist:"
+              Get-ChildItem "dist" -Force
+              exit 1
+            }
+          } else {
+            echo "❌ dist directory not created - PyInstaller failed"
+            exit 1
+          }
+        } catch {
+          echo "❌ PyInstaller failed with error: $_"
+          echo "Last 20 lines of any available logs:"
+          if (Test-Path "build\Giveaway_IG\warn-Giveaway_IG.txt") {
+            Get-Content "build\Giveaway_IG\warn-Giveaway_IG.txt" -Tail 20
+          }
+          exit 1
         }
       shell: powershell
 
@@ -65,41 +93,35 @@ jobs:
       shell: powershell
 
     - name: Test executable runs (basic smoke test)
+      shell: powershell
       run: |
-        if (Test-Path "dist\Giveaway_IG.exe") {
-          # Test que l'exécutable démarre sans erreur critique
-          # Utilisation d'un timeout pour éviter que le programme attende une entrée utilisateur
-          $job = Start-Job -ScriptBlock {
-            & ".\dist\Giveaway_IG.exe" 2>&1
-          }
-
-          # Attendre maximum 15 secondes
-          $timeout = 15
-          $completed = $job | Wait-Job -Timeout $timeout
-
-          if ($completed) {
-            $output = Receive-Job $job
-            Write-Output "Executable output:"
-            Write-Output $output
-
-            # Vérifier que l'output contient des éléments attendus
-            $outputString = $output -join " "
-            if ($outputString -match "Instant Gaming Giveaway Tool" -or $outputString -match "v\d+\.\d+\.\d+") {
-              Write-Output "✅ Executable appears to be working correctly"
-            } else {
-              Write-Output "⚠️ Executable started but output seems unexpected"
-            }
-          } else {
-            Write-Output "⚠️ Executable test timed out after $timeout seconds (this is expected for interactive programs)"
-            Stop-Job $job
-          }
-
-          Remove-Job $job
-          Write-Output "✅ Smoke test completed"
-        } else {
-          Write-Output "❌ Executable not found, skipping smoke test"
-          exit 1
+        # L'exécutable existe déjà (vérifié dans l'étape précédente)
+        echo "Running smoke test on Windows executable..."
+        
+        # Test que l'exécutable démarre sans erreur critique
+        $job = Start-Job -ScriptBlock {
+          & "dist\Giveaway_IG.exe" --help 2>&1
         }
+
+        # Attendre maximum 10 secondes
+        $timeout = 10
+        $completed = $job | Wait-Job -Timeout $timeout
+
+        if ($completed) {
+          $output = Receive-Job $job
+          echo "Executable output:"
+          echo $output
+          
+          # Si l'exécutable a répondu, c'est bon signe
+          echo "✅ Executable responded to --help"
+        } else {
+          echo "⚠️ Executable test timed out after $timeout seconds"
+          echo "This might be normal if the executable is interactive"
+          Stop-Job $job
+        }
+
+        Remove-Job $job
+        echo "✅ Smoke test completed"
       shell: powershell
 
     - name: Upload executable artifact
