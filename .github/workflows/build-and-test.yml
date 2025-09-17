@@ -50,10 +50,10 @@ jobs:
       run: |
         Write-Output "Starting PyInstaller build..."
         $ErrorActionPreference = "Stop"
-        
+
         try {
           pyinstaller --onefile --add-data "config.ini;." --add-data "traduction.json;." --add-data "List-Uncheck.csv;." --icon="Magic.ico" --version-file="file_version_info.txt" --name="Giveaway_IG" giveaway_ig.py
-          
+
           Write-Output "Build completed successfully"
         } catch {
           Write-Output "❌ PyInstaller failed with error: $($_.Exception.Message)"
