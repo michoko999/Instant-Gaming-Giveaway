@@ -1,6 +1,6 @@
 # Outil de Giveaway Instant Gaming
 
-<## 🛠️ Compilation en exécutable
+## 🛠️ Compilation en exécutable
 > [!NOTE]
 > Pour obtenir un format exécutable portable, l'application est empaquetée avec PyInstaller dans un fichier `EXE`. Certains moteurs antivirus (y compris Windows Defender) peuvent signaler l'exécutable empaqueté comme un cheval de Troie, car PyInstaller a déjà été utilisé par d'autres pour empaqueter du code Python malveillant. Ces alertes peuvent être ignorées sans danger. Si vous ne faites absolument pas confiance à l'exécutable, vous devrez installer Python vous-même et tout exécuter depuis le code source.
 
@@ -66,7 +66,7 @@ Si vous souhaitez créer une version exécutable (.exe) de l'application :
 
 ## 🚀 Utilisation
 > [!NOTE]
-> Ce programme ne contient aucun lien d'affiliation avec Instant Gaming, contrairement à d'autres outils/listes de concours.
+> Ce programme n’a aucun lien avec Instant Gaming et ne contient aucun lien d’affiliation. Je ne gagne rien grâce à lui, contrairement à d’autres outils ou listes de concours qui peuvent inclure des liens de parrainage.
 
 1. Lancez le programme en utilisant `run.bat` ou en exécutant `python giveaway_ig.py`
 2. Sélectionnez votre langue préférée
@@ -93,3 +93,4 @@ Ce projet est sous licence MIT. Consultez le fichier LICENSE pour plus de détai
 
 ---
 Pour la version anglaise de cette documentation, cliquez sur le badge English en haut de ce document ou accédez à la [documentation en anglais (README.md)](README.md).
+
