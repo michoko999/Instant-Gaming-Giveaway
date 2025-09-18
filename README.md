@@ -61,7 +61,7 @@ If you want to create an executable version of the application:
 
 ## 🚀 Usage
 > [!NOTE]
-> This program has no affiliation with Instant Gaming, unlike other tools/contest lists.
+> This program has no affiliation with Instant Gaming and contains no affiliate links. I do not earn anything from it, unlike other tools or contest lists that may include referral links.
 
 1. Run the program using `run.bat` or by executing `python giveaway_ig.py`
 2. Select your preferred language
@@ -88,3 +88,4 @@ This project is licensed under the MIT License. See the LICENSE file for details
 
 ---
 For additional information or support in French, click on the French badge at the top of this document or access the [French documentation (README-FR.md)](README-FR.md).
+
