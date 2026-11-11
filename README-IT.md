@@ -94,6 +94,20 @@ Nessuna installazione: tutto è salvato in una cartella `GiveawayIG-data` accant
 
 </td>
 </tr>
+<tr>
+<td valign="top">
+
+### 🏆 Sapere quando vinci
+A ogni controllo delle liste, l'app cerca i tuoi account nell'elenco dei vincitori dei giveaway. Una vincita compare nella schermata iniziale e in **Le mie vincite**, nella cronologia.
+
+</td>
+<td valign="top">
+
+### 🔔 Avvia e dimentica
+**Avvia per tutti gli account** esegue le sessioni una dopo l'altra. Una notifica ti avvisa alla fine, un avviso ti ricorda l'inizio di un nuovo mese e i nuovi giveaway hanno l'etichetta **Nuovo**. Scorciatoie: Spazio (pausa), → (salta), Esc (ferma).
+
+</td>
+</tr>
 </table>
 
 ## 📸 Screenshot

@@ -94,6 +94,20 @@ Keine Installation: Alles liegt in einem Ordner `GiveawayIG-data` neben der ausf
 
 </td>
 </tr>
+<tr>
+<td valign="top">
+
+### 🏆 Wissen, wann du gewinnst
+Bei jeder Listenprüfung sucht die App deine Konten in der Gewinnerliste der Giveaways. Ein Gewinn erscheint auf dem Startbildschirm und unter **Meine Gewinne** im Verlauf.
+
+</td>
+<td valign="top">
+
+### 🔔 Starten und vergessen
+**Für alle Konten starten** führt die Sitzungen nacheinander aus. Eine Benachrichtigung meldet das Ende, ein Hinweis erinnert an den Beginn eines neuen Monats und neue Giveaways tragen das Etikett **Neu**. Tastenkürzel: Leertaste (Pause), → (überspringen), Esc (beenden).
+
+</td>
+</tr>
 </table>
 
 ## 📸 Screenshots

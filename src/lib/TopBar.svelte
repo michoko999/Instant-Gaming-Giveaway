@@ -11,6 +11,8 @@
   ];
 
   const MAX_ACCOUNTS = 8;
+  // Concours apparus depuis la dernière visite de l'écran Concours.
+  const fresh = $derived(app.overview?.counts.fresh ?? 0);
   const accounts = $derived(app.overview?.accounts ?? []);
   const active = $derived(activeAccount());
   const connected = $derived(active?.connected ?? false);
@@ -42,6 +44,9 @@
         onclick={() => (app.screen = link.screen)}
       >
         {t(link.key)}
+        {#if link.screen === 'giveaways' && fresh > 0 && app.screen !== 'giveaways'}
+          <span class="count" title={t('gw.newCount', { n: fresh })}>{fresh}</span>
+        {/if}
       </button>
     {/each}
   </nav>
@@ -112,6 +117,21 @@
 </header>
 
 <style>
+  .count {
+    margin-left: 6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: #0b0d22;
+    background: var(--lilac);
+    vertical-align: 1px;
+  }
   .bar {
     display: flex;
     flex-wrap: wrap;

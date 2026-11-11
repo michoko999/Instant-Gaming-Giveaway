@@ -91,6 +91,20 @@ No installation: everything is stored in a `GiveawayIG-data` folder next to the 
 
 </td>
 </tr>
+<tr>
+<td valign="top">
+
+### 🏆 Know when you win
+After each list check, the app looks for your accounts in the giveaways' winners list. A win shows up on the home screen and in **My wins**, under History.
+
+</td>
+<td valign="top">
+
+### 🔔 Start it and forget it
+**Start for all accounts** chains the sessions one after another. A notification tells you when it's over, a banner reminds you when a new month begins and new giveaways get a **New** tag. Shortcuts: Space (pause), → (skip), Esc (stop).
+
+</td>
+</tr>
 </table>
 
 ## 📸 Screenshots

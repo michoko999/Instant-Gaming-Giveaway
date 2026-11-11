@@ -57,6 +57,10 @@ impl Store {
             avatar_cache: HashMap::new(),
         };
         store.migrate_marks();
+        if store.repair_glued_codes() {
+            let _ = store.save_giveaways();
+            let _ = store.save_history();
+        }
         if first_run_with_accounts {
             let _ = store.save_accounts();
         }
@@ -75,6 +79,65 @@ impl Store {
                 g.last_outcome = None;
             }
         }
+    }
+
+    /// Répare les codes abîmés par deux liens collés dans une liste (« retroraiderhttps ») :
+    /// ils sont fusionnés avec le bon code, ou renommés s'il n'existe pas encore.
+    /// Renvoie `true` si quelque chose a changé.
+    fn repair_glued_codes(&mut self) -> bool {
+        let broken: Vec<(String, String)> = self
+            .giveaways
+            .iter()
+            .filter_map(|g| {
+                crate::sources::glued_prefix(&g.code)
+                    .map(|clean| (g.code.clone(), clean.to_string()))
+            })
+            .collect();
+        if broken.is_empty() {
+            return false;
+        }
+        for (bad, clean) in &broken {
+            let Some(pos) = self.giveaways.iter().position(|g| &g.code == bad) else {
+                continue;
+            };
+            let target = self
+                .giveaways
+                .iter()
+                .position(|g| g.code.eq_ignore_ascii_case(clean));
+            match target {
+                Some(t) => {
+                    let old = self.giveaways.remove(pos);
+                    let t = if t > pos { t - 1 } else { t };
+                    let good = &mut self.giveaways[t];
+                    for (account, mark) in old.marks {
+                        let keep = good
+                            .marks
+                            .get(&account)
+                            .is_some_and(|m| m.participated_at >= mark.participated_at);
+                        if !keep {
+                            good.marks.insert(account, mark);
+                        }
+                    }
+                    for s in old.sources {
+                        if !good.sources.contains(&s) {
+                            good.sources.push(s);
+                        }
+                    }
+                    good.added_at = good.added_at.min(old.added_at);
+                }
+                None => self.giveaways[pos].code = clean.clone(),
+            }
+            let fixed = self
+                .giveaways
+                .iter()
+                .find(|g| g.code.eq_ignore_ascii_case(clean))
+                .map(|g| g.code.clone())
+                .unwrap_or_else(|| clean.clone());
+            for h in self.history.iter_mut().filter(|h| &h.code == bad) {
+                h.code = fixed.clone();
+            }
+        }
+        true
     }
 
     #[cfg(test)]
@@ -153,6 +216,7 @@ impl Store {
                 connected: a.connected,
                 active: a.id == active,
                 done_this_month: self.done_count(&a.id, now),
+                queue: self.session_queue_for(&a.id, now).len(),
             })
             .collect()
     }
@@ -292,11 +356,16 @@ impl Store {
     /// Codes à traiter lors d'une session du compte actif, dans l'ordre de la liste.
     pub fn session_queue(&self, now: DateTime<Utc>) -> Vec<String> {
         let account = self.accounts.active().id.clone();
+        self.session_queue_for(&account, now)
+    }
+
+    /// Codes à traiter lors d'une session d'un compte donné.
+    pub fn session_queue_for(&self, account: &str, now: DateTime<Utc>) -> Vec<String> {
         self.giveaways
             .iter()
             .filter(|g| g.status == Status::Active && !g.ignored)
             .filter(|g| {
-                !(self.settings.skip_done_this_month && Self::done_this_month(g, &account, now))
+                !(self.settings.skip_done_this_month && Self::done_this_month(g, account, now))
             })
             .map(|g| g.code.clone())
             .collect()
@@ -318,7 +387,46 @@ impl Store {
             }
         }
         c.queue = self.session_queue(now).len();
+        if let Some(seen) = self.meta.giveaways_seen_at {
+            c.fresh = self
+                .giveaways
+                .iter()
+                .filter(|g| g.status == Status::Active && !g.ignored && g.added_at > seen)
+                .count();
+        }
         c
+    }
+
+    /// Repère les comptes de l'application parmi les gagnants d'un concours.
+    /// Renvoie les gains qui n'étaient pas encore connus.
+    pub fn record_wins(
+        &mut self,
+        code: &str,
+        winners: &[crate::checker::Winner],
+        now: DateTime<Utc>,
+    ) -> Vec<Win> {
+        let mut found = Vec::new();
+        for account in &self.accounts.list {
+            for w in winners.iter().filter(|w| winner_is(account, w)) {
+                let known = self.meta.wins.iter().any(|x| {
+                    x.account == account.id
+                        && x.code.eq_ignore_ascii_case(code)
+                        && x.product_url == w.product_url
+                });
+                if !known {
+                    found.push(Win {
+                        account: account.id.clone(),
+                        code: code.to_string(),
+                        product: w.product_url.as_deref().and_then(product_name),
+                        product_url: w.product_url.clone(),
+                        detected_at: now,
+                        seen: false,
+                    });
+                }
+            }
+        }
+        self.meta.wins.extend(found.iter().cloned());
+        found
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -424,6 +532,81 @@ fn last_months(now: DateTime<Utc>, n: u32) -> Vec<(i32, u32)> {
             (index.div_euclid(12), index.rem_euclid(12) as u32 + 1)
         })
         .collect()
+}
+
+/// Le gagnant est-il ce compte ? Par l'identifiant de profil s'il est connu, sinon par le pseudo.
+fn winner_is(account: &Account, winner: &crate::checker::Winner) -> bool {
+    match (&account.profile, &winner.profile) {
+        (Some(mine), Some(theirs)) => mine.eq_ignore_ascii_case(theirs),
+        (Some(_), None) | (None, _) => account
+            .name
+            .as_deref()
+            .map(|name| !name.is_empty() && name.eq_ignore_ascii_case(&winner.nickname))
+            .unwrap_or(false),
+    }
+}
+
+/// Nom lisible d'un jeu à partir de l'adresse de sa page :
+/// `…/fr/23617-acheter-phantom-blade-zero-digital-deluxe-edition-pc-steam/` → « Phantom Blade Zero Digital Deluxe Edition ».
+pub fn product_name(url: &str) -> Option<String> {
+    const VERBS: [&str; 8] = [
+        "acheter",
+        "buy",
+        "comprar",
+        "kaufen",
+        "comprare",
+        "acquistare",
+        "kup",
+        "kupic",
+    ];
+    const PLATFORMS: [&str; 16] = [
+        "pc",
+        "mac",
+        "steam",
+        "epic",
+        "gog",
+        "origin",
+        "ea",
+        "ubisoft",
+        "connect",
+        "rockstar",
+        "xbox",
+        "playstation",
+        "ps4",
+        "ps5",
+        "switch",
+        "eshop",
+    ];
+    let slug = url.trim_end_matches('/').rsplit('/').next()?;
+    let mut words: Vec<&str> = slug.split('-').filter(|w| !w.is_empty()).collect();
+    if words
+        .first()
+        .map(|w| w.chars().all(|c| c.is_ascii_digit()))
+        .unwrap_or(false)
+    {
+        words.remove(0);
+    }
+    if words.first().map(|w| VERBS.contains(w)).unwrap_or(false) {
+        words.remove(0);
+    }
+    while words.len() > 1 && words.last().map(|w| PLATFORMS.contains(w)).unwrap_or(false) {
+        words.pop();
+    }
+    if words.is_empty() {
+        return None;
+    }
+    let name = words
+        .iter()
+        .map(|w| {
+            let mut c = w.chars();
+            match c.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + c.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    Some(name)
 }
 
 fn image_mime(file: &str) -> &'static str {
@@ -777,6 +960,126 @@ mod tests {
         let settings = fs::read_to_string(dir.join(SETTINGS_FILE)).unwrap();
         assert!(!settings.contains("accountConnected"));
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn finds_our_accounts_among_winners() {
+        use crate::checker::Winner;
+        let mut store = Store::in_memory();
+        let now = Utc::now();
+        {
+            let main = store.accounts.get_mut(MAIN_ACCOUNT).unwrap();
+            main.profile = Some("gamer-33ecea".into());
+            main.name = Some("Michoko".into());
+        }
+        let mut second = Account::new("second", now);
+        second.name = Some("Faerune".into());
+        store.accounts.list.push(second);
+        store.accounts.list.push(Account::new("unknown", now));
+        let winners = vec![
+            Winner {
+                nickname: "Someone".into(),
+                profile: Some("GAMER-33ECEA".into()),
+                product_url: Some("https://www.instant-gaming.com/fr/23617-acheter-phantom-blade-zero-digital-deluxe-edition-pc-steam/".into()),
+            },
+            Winner { nickname: "faerune".into(), profile: Some("gamer-91bf31".into()), product_url: None },
+            Winner { nickname: "Michoko".into(), profile: Some("someone-else".into()), product_url: None },
+        ];
+        let wins = store.record_wins("SUPREMELEADER", &winners, now);
+        assert_eq!(wins.len(), 2);
+        assert_eq!(wins[0].account, MAIN_ACCOUNT);
+        assert_eq!(
+            wins[0].product.as_deref(),
+            Some("Phantom Blade Zero Digital Deluxe Edition")
+        );
+        assert_eq!(wins[1].account, "second");
+        // Déjà connus : rien de nouveau.
+        assert!(store.record_wins("supremeleader", &winners, now).is_empty());
+        assert_eq!(store.meta.wins.len(), 2);
+    }
+
+    #[test]
+    fn readable_game_names() {
+        assert_eq!(
+            product_name(
+                "https://www.instant-gaming.com/en/15628-buy-the-blood-of-dawnwalker-pc-steam/"
+            )
+            .as_deref(),
+            Some("The Blood Of Dawnwalker")
+        );
+        assert_eq!(
+            product_name(
+                "https://www.instant-gaming.com/de/9-kaufen-elden-ring-xbox-series-x-s-xbox-one/"
+            )
+            .as_deref(),
+            Some("Elden Ring Xbox Series X S Xbox One")
+        );
+        assert_eq!(
+            product_name("https://www.instant-gaming.com/fr/1-acheter-pc/").as_deref(),
+            Some("Pc")
+        );
+        assert_eq!(
+            product_name("https://www.instant-gaming.com/fr/"),
+            Some("Fr".into())
+        );
+    }
+
+    #[test]
+    fn new_giveaways_since_last_visit() {
+        let mut store = Store::in_memory();
+        let earlier = Utc::now() - chrono::Duration::days(2);
+        let now = Utc::now();
+        store.merge_codes(&[("OLD".into(), "s".into())], earlier);
+        store.merge_codes(&[("NEW".into(), "s".into())], now);
+        store.set_status("OLD", Status::Active, now);
+        store.set_status("NEW", Status::Active, now);
+        assert_eq!(store.counts(now).fresh, 0);
+        store.meta.giveaways_seen_at = Some(earlier + chrono::Duration::hours(1));
+        assert_eq!(store.counts(now).fresh, 1);
+    }
+
+    #[test]
+    fn repairs_codes_glued_to_the_next_link() {
+        let mut store = Store::in_memory();
+        let earlier = Utc::now() - chrono::Duration::days(40);
+        let now = Utc::now();
+        store.merge_codes(
+            &[
+                ("retroraiderhttps".into(), "a".into()),
+                ("HIGHSTYLEDhttps".into(), "a".into()),
+                ("HIGHSTYLED".into(), "b".into()),
+            ],
+            earlier,
+        );
+        store.record(
+            MAIN_ACCOUNT,
+            "HIGHSTYLEDhttps",
+            Outcome::Participated,
+            SessionMode::Auto,
+            None,
+            now,
+        );
+        store.record(
+            MAIN_ACCOUNT,
+            "retroraiderhttps",
+            Outcome::Participated,
+            SessionMode::Auto,
+            None,
+            now,
+        );
+        assert!(store.repair_glued_codes());
+        let mut codes: Vec<&str> = store.giveaways.iter().map(|g| g.code.as_str()).collect();
+        codes.sort_unstable();
+        assert_eq!(codes, vec!["HIGHSTYLED", "retroraider"]);
+        let merged = store
+            .giveaways
+            .iter()
+            .find(|g| g.code == "HIGHSTYLED")
+            .unwrap();
+        assert_eq!(merged.sources, vec!["b".to_string(), "a".to_string()]);
+        assert!(merged.marks[MAIN_ACCOUNT].participated_at.is_some());
+        assert!(store.history.iter().all(|h| !h.code.ends_with("https")));
+        assert!(!store.repair_glued_codes());
     }
 
     #[test]

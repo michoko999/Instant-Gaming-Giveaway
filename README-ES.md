@@ -94,6 +94,20 @@ Sin instalación: todo se guarda en una carpeta `GiveawayIG-data` junto al ejecu
 
 </td>
 </tr>
+<tr>
+<td valign="top">
+
+### 🏆 Saber cuándo ganas
+En cada comprobación de las listas, la aplicación busca tus cuentas en la lista de ganadores de los sorteos. Un premio aparece en la pantalla de inicio y en **Mis premios**, en el historial.
+
+</td>
+<td valign="top">
+
+### 🔔 Iniciar y olvidarse
+**Iniciar para todas las cuentas** encadena las sesiones una tras otra. Una notificación te avisa al terminar, un aviso te recuerda que empieza un nuevo mes y los sorteos nuevos llevan la etiqueta **Nuevo**. Atajos: Espacio (pausa), → (saltar), Esc (parar).
+
+</td>
+</tr>
 </table>
 
 ## 📸 Capturas de pantalla

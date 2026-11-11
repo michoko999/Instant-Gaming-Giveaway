@@ -91,6 +91,20 @@ Aucune installation : tout est rangé dans un dossier `GiveawayIG-data` à côt�
 
 </td>
 </tr>
+<tr>
+<td valign="top">
+
+### 🏆 Savoir quand tu gagnes
+À chaque vérification des listes, l'application cherche tes comptes dans la liste des gagnants des concours. Un gain s'affiche sur l'accueil et dans **Mes gains**, dans l'historique.
+
+</td>
+<td valign="top">
+
+### 🔔 Lance et oublie
+**Lancer pour tous les comptes** enchaîne les sessions l'une après l'autre. Une notification te prévient à la fin, un bandeau te rappelle qu'un nouveau mois commence et les nouveaux concours portent l'étiquette **Nouveau**. Raccourcis : Espace (pause), → (passer), Échap (arrêter).
+
+</td>
+</tr>
 </table>
 
 ## 📸 Captures d'écran

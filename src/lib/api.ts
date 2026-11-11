@@ -42,6 +42,8 @@ export interface Counts {
   unknown: number;
   ignored: number;
   queue: number;
+  /** Concours actifs ajoutés depuis la dernière visite de l'écran Concours. */
+  fresh: number;
 }
 
 export interface MonthCount {
@@ -79,6 +81,21 @@ export interface Meta {
   lastSync: string | null;
   lastCheck: string | null;
   lastSession: SessionSummary | null;
+  wins: Win[];
+  /** Mois (« AAAA-MM ») dont le bandeau « nouveau mois » a été fermé. */
+  seenMonth: string | null;
+  /** Dernière visite de l'écran Concours. */
+  giveawaysSeenAt: string | null;
+}
+
+/** Un compte de l'application figure parmi les gagnants d'un concours. */
+export interface Win {
+  account: string;
+  code: string;
+  product: string | null;
+  productUrl: string | null;
+  detectedAt: string;
+  seen: boolean;
 }
 
 /** Compte Instant Gaming (chacun a sa connexion, son suivi du mois et son historique). */
@@ -92,6 +109,8 @@ export interface Account {
   connected: boolean;
   active: boolean;
   doneThisMonth: number;
+  /** Concours qu'une session de ce compte traiterait maintenant. */
+  queue: number;
 }
 
 export interface Overview {
@@ -224,6 +243,10 @@ export const api = {
   addAccount: () => invoke<string>('add_account'),
   switchAccount: (id: string) => invoke<void>('switch_account', { id }),
   removeAccount: (id: string) => invoke<void>('remove_account', { id }),
+  ackWins: () => invoke<void>('ack_wins'),
+  dismissMonth: () => invoke<void>('dismiss_month'),
+  markGiveawaysSeen: () => invoke<void>('mark_giveaways_seen'),
+  notify: (title: string, body: string) => invoke<void>('notify', { title, body }),
   openGiveaway: (code: string) => invoke<void>('open_giveaway', { code }),
   showIgWindow: () => invoke<boolean>('show_ig_window'),
   openExternal: (url: string) => invoke<void>('open_external', { url }),
@@ -242,6 +265,7 @@ export const events = {
     listen<CheckProgress>('check-progress', (e) => cb(e.payload)),
   updateProgress: (cb: (p: UpdateProgress) => void): Promise<UnlistenFn> =>
     listen<UpdateProgress>('update-progress', (e) => cb(e.payload)),
+  winsFound: (cb: (wins: Win[]) => void): Promise<UnlistenFn> => listen<Win[]>('wins-found', (e) => cb(e.payload)),
 };
 
 export const REPO_URL = 'https://github.com/michoko999/Instant-Gaming-Giveaway';

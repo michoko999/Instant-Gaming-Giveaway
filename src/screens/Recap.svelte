@@ -1,7 +1,8 @@
 <script lang="ts">
+  import Avatar from '../lib/Avatar.svelte';
   import Icon from '../lib/Icon.svelte';
   import { api } from '../lib/api';
-  import { app, duration, fail, refresh, t } from '../lib/state.svelte';
+  import { accountName, activeAccount, app, duration, fail, refresh, t } from '../lib/state.svelte';
 
   const s = $derived(app.summary ?? app.overview?.meta.lastSession ?? null);
   const seconds = $derived(
@@ -9,8 +10,22 @@
   );
   const manualOnly = $derived(s ? s.mode === 'manual' && s.participated === 0 : false);
 
-  function open(code: string) {
-    api.openGiveaway(code).catch(fail);
+  // Après une série « tous les comptes » : résultats par compte.
+  const perAccount = $derived(
+    app.multiResults.map((r) => ({ ...r, account: (app.overview?.accounts ?? []).find((a) => a.id === r.id) })),
+  );
+
+  /** Ouvre la page d'un concours, avec le compte concerné. */
+  async function open(code: string, accountId?: string) {
+    try {
+      if (accountId && activeAccount()?.id !== accountId) {
+        await api.switchAccount(accountId);
+        await refresh();
+      }
+      await api.openGiveaway(code);
+    } catch (e) {
+      fail(e);
+    }
   }
 
   async function goHome() {
@@ -39,7 +54,7 @@
         {#if manualOnly}
           <em>{t('recap.openedB', { n: s.opened })}</em> {t('recap.openedC')}
         {:else}
-          <em>{t('recap.titleB', { n: s.participated })}</em> {t('recap.titleC')}
+          <em>{t('recap.titleB', { n: s.participated })}</em> {t('recap.titleC', { n: s.participated })}
         {/if}
       </h1>
       <p class="muted">
@@ -64,16 +79,42 @@
       </p>
     {/if}
 
-    {#each s.pending as code (code)}
-      <section class="pending glass">
-        <span class="coral"><Icon name="alert" size={20} /></span>
-        <span class="what">
-          <span class="mono">{code}</span>
-          <span class="muted small">{t('recap.pendingHint')}</span>
-        </span>
-        <button type="button" class="btn btn-coral" onclick={() => open(code)}>{t('recap.openPage')}</button>
+    {#if perAccount.length > 0}
+      <section class="accounts glass" aria-label={t('multi.results')}>
+        {#each perAccount as r (r.id)}
+          <div class="acc">
+            <Avatar account={r.account} size={30} />
+            <span class="name">{accountName(r.account)}</span>
+            <span class="muted small">
+              {t('multi.result', { n: r.summary.participated, already: r.summary.already })}{r.summary.stopped ? ` · ${t('multi.stopped')}` : ''}
+            </span>
+          </div>
+        {/each}
       </section>
-    {/each}
+      {#each perAccount as r (r.id)}
+        {#each r.summary.pending as code (r.id + code)}
+          <section class="pending glass">
+            <span class="coral"><Icon name="alert" size={20} /></span>
+            <span class="what">
+              <span class="mono">{code}</span>
+              <span class="muted small">{accountName(r.account)} · {t('recap.pendingHint')}</span>
+            </span>
+            <button type="button" class="btn btn-coral" onclick={() => open(code, r.id)}>{t('recap.openPage')}</button>
+          </section>
+        {/each}
+      {/each}
+    {:else}
+      {#each s.pending as code (code)}
+        <section class="pending glass">
+          <span class="coral"><Icon name="alert" size={20} /></span>
+          <span class="what">
+            <span class="mono">{code}</span>
+            <span class="muted small">{t('recap.pendingHint')}</span>
+          </span>
+          <button type="button" class="btn btn-coral" onclick={() => open(code)}>{t('recap.openPage')}</button>
+        </section>
+      {/each}
+    {/if}
 
     <div class="row">
       <button type="button" class="btn btn-primary btn-lg" onclick={goHome}>{t('recap.home')}</button>
@@ -83,6 +124,27 @@
 {/if}
 
 <style>
+  .accounts {
+    width: min(560px, 100%);
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+  }
+  .acc {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    text-align: left;
+  }
+  .acc + .acc {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .acc .name {
+    flex: 1;
+    font-weight: 500;
+  }
   .page {
     max-width: 760px;
     margin: 0 auto;

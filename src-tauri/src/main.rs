@@ -20,6 +20,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             update::cleanup();
             let paths = AppPaths::resolve(app.handle());
@@ -68,6 +69,10 @@ fn main() {
             commands::add_account,
             commands::switch_account,
             commands::remove_account,
+            commands::ack_wins,
+            commands::dismiss_month,
+            commands::mark_giveaways_seen,
+            commands::notify,
             commands::open_giveaway,
             commands::show_ig_window,
             commands::open_external,

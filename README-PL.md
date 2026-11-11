@@ -94,6 +94,20 @@ Bez instalacji: wszystko jest zapisywane w folderze `GiveawayIG-data` obok pliku
 
 </td>
 </tr>
+<tr>
+<td valign="top">
+
+### 🏆 Wiesz, kiedy wygrywasz
+Przy każdym sprawdzaniu list aplikacja szuka twoich kont na liście zwycięzców giveawayów. Wygrana pojawia się na ekranie głównym i w sekcji **Moje wygrane** w historii.
+
+</td>
+<td valign="top">
+
+### 🔔 Uruchom i zapomnij
+**Start dla wszystkich kont** uruchamia sesje jedna po drugiej. Powiadomienie informuje o końcu, baner przypomina o początku nowego miesiąca, a nowe giveawaye mają etykietę **Nowy**. Skróty: Spacja (pauza), → (pomiń), Esc (zatrzymaj).
+
+</td>
+</tr>
 </table>
 
 ## 📸 Zrzuty ekranu

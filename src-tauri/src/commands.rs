@@ -242,7 +242,9 @@ pub async fn check_giveaways(app: AppHandle, scope: String) -> CmdResult<CheckRe
         code: String::new(),
         status: Status::Unknown,
     };
-    checker::check_all(&state.client, &lang, codes, |code, status| {
+    let mut new_wins: Vec<Win> = Vec::new();
+    checker::check_all(&state.client, &lang, codes, |code, page| {
+        let status = page.status;
         progress.done += 1;
         match status {
             Status::Active => progress.active += 1,
@@ -260,10 +262,17 @@ pub async fn check_giveaways(app: AppHandle, scope: String) -> CmdResult<CheckRe
             if status != Status::Unknown || !known {
                 store.set_status(code, status, Utc::now());
             }
+            // Un de nos comptes parmi les derniers gagnants ?
+            if !page.winners.is_empty() {
+                new_wins.extend(store.record_wins(code, &page.winners, Utc::now()));
+            }
         }
         let _ = app.emit("check-progress", progress.clone());
     })
     .await;
+    if !new_wins.is_empty() {
+        let _ = app.emit("wins-found", &new_wins);
+    }
     let mut store = state.store.lock().map_err(lock_err)?;
     store.meta.last_check = Some(Utc::now());
     store.save_giveaways().map_err(|e| e.to_string())?;
@@ -852,9 +861,10 @@ pub async fn install_update(app: AppHandle) -> CmdResult<()> {
     if !update::info(&release).can_install {
         return Err("update-none".into());
     }
+    let (kind, target) = update::local_target().ok_or("update-none")?;
     let emitter = app.clone();
     let mut last_percent = u64::MAX;
-    let bytes = update::download(&state.client, &release, |received, total| {
+    let bytes = update::download(&state.client, &release, kind, |received, total| {
         // Un événement par pourcent suffit.
         let percent = (received * 100).checked_div(total).unwrap_or(0);
         if percent != last_percent {
@@ -863,7 +873,8 @@ pub async fn install_update(app: AppHandle) -> CmdResult<()> {
         }
     })
     .await?;
-    let exe = std::env::current_exe().map_err(|_| "update-write".to_string())?;
+    // L'exe sous Windows, le fichier .AppImage sous Linux.
+    let exe = target;
     update::replace(&exe, &bytes)?;
     let mut relaunch = std::process::Command::new(&exe);
     if let Some(dir) = exe.parent() {
@@ -873,4 +884,44 @@ pub async fn install_update(app: AppHandle) -> CmdResult<()> {
     automation::close_ig(&app);
     app.exit(0);
     Ok(())
+}
+
+/// L'utilisateur a vu les gains annoncés.
+#[tauri::command]
+pub fn ack_wins(state: State<'_, AppState>) -> CmdResult<()> {
+    let mut store = state.store.lock().map_err(lock_err)?;
+    for w in &mut store.meta.wins {
+        w.seen = true;
+    }
+    store.save_meta().map_err(|e| e.to_string())
+}
+
+/// Ferme le bandeau « nouveau mois » jusqu'au mois suivant.
+#[tauri::command]
+pub fn dismiss_month(state: State<'_, AppState>) -> CmdResult<()> {
+    let mut store = state.store.lock().map_err(lock_err)?;
+    store.meta.seen_month = Some(Local::now().format("%Y-%m").to_string());
+    store.save_meta().map_err(|e| e.to_string())
+}
+
+/// Visite de l'écran Concours : les concours ajoutés jusqu'ici ne sont plus « nouveaux ».
+#[tauri::command]
+pub fn mark_giveaways_seen(state: State<'_, AppState>) -> CmdResult<()> {
+    let mut store = state.store.lock().map_err(lock_err)?;
+    store.meta.giveaways_seen_at = Some(Utc::now());
+    store.save_meta().map_err(|e| e.to_string())
+}
+
+/// Notification du système (fin de session, gain), envoyée quand l'application est en arrière-plan.
+#[tauri::command]
+pub fn notify(app: AppHandle, title: String, body: String) -> CmdResult<()> {
+    use tauri_plugin_notification::NotificationExt;
+    let title: String = title.chars().take(80).collect();
+    let body: String = body.chars().take(240).collect();
+    app.notification()
+        .builder()
+        .title(title)
+        .body(body)
+        .show()
+        .map_err(|e| e.to_string())
 }

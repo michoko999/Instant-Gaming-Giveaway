@@ -24,8 +24,50 @@ const LATEST_RELEASE: &str =
 const DOWNLOAD_PREFIX: &str =
     "https://github.com/michoko999/instant-gaming-giveaway/releases/download/";
 const EXE_ASSET: &str = "GiveawayIG.exe";
+const APPIMAGE_ASSET: &str = "GiveawayIG-x86_64.AppImage";
+
+/// Ce que la mise à jour remplace sur cette machine.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    WindowsExe,
+    LinuxAppImage,
+}
+
+impl Kind {
+    fn asset(self) -> &'static str {
+        match self {
+            Kind::WindowsExe => EXE_ASSET,
+            Kind::LinuxAppImage => APPIMAGE_ASSET,
+        }
+    }
+
+    /// Début obligatoire du fichier : exécutable Windows (MZ) ou Linux (ELF).
+    fn magic(self) -> &'static [u8] {
+        match self {
+            Kind::WindowsExe => b"MZ",
+            Kind::LinuxAppImage => b"\x7fELF",
+        }
+    }
+}
+
+/// Type de mise à jour possible ici et fichier à remplacer : l'exécutable sous Windows,
+/// le fichier `.AppImage` sous Linux (indiqué par la variable `APPIMAGE`).
+pub fn local_target() -> Option<(Kind, PathBuf)> {
+    if cfg!(windows) {
+        return std::env::current_exe()
+            .ok()
+            .map(|path| (Kind::WindowsExe, path));
+    }
+    if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
+        return std::env::var_os("APPIMAGE")
+            .map(PathBuf::from)
+            .filter(|path| path.is_absolute() && path.is_file())
+            .map(|path| (Kind::LinuxAppImage, path));
+    }
+    None
+}
 const SUMS_ASSET: &str = "SHA256SUMS.txt";
-const MAX_EXE_BYTES: u64 = 100 * 1024 * 1024;
+const MAX_EXE_BYTES: u64 = 300 * 1024 * 1024;
 const MAX_SUMS_BYTES: usize = 64 * 1024;
 /// Le téléchargement de l'exécutable peut être long sur une petite connexion.
 const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(600);
@@ -101,12 +143,15 @@ pub fn info(release: &Release) -> UpdateInfo {
         latest: Some(release.tag_name.clone()),
         available,
         url: Some(release.html_url.clone()),
-        can_install: available && cfg!(windows) && files(release).is_some(),
+        can_install: available
+            && local_target()
+                .map(|(kind, _)| files(release, kind).is_some())
+                .unwrap_or(false),
     }
 }
 
-/// L'exécutable et le fichier d'empreintes de la release, s'ils viennent bien de ce dépôt.
-fn files(release: &Release) -> Option<(&Asset, &Asset)> {
+/// Le fichier à installer et le fichier d'empreintes de la release, s'ils viennent bien de ce dépôt.
+fn files(release: &Release, kind: Kind) -> Option<(&Asset, &Asset)> {
     let find = |name: &str| {
         release.assets.iter().find(|a| {
             a.name == name
@@ -115,7 +160,7 @@ fn files(release: &Release) -> Option<(&Asset, &Asset)> {
                     .starts_with(DOWNLOAD_PREFIX)
         })
     };
-    Some((find(EXE_ASSET)?, find(SUMS_ASSET)?))
+    Some((find(kind.asset())?, find(SUMS_ASSET)?))
 }
 
 /// Empreinte annoncée pour `name` dans un fichier au format `sha256sum` (« empreinte  nom »).
@@ -138,12 +183,17 @@ pub fn sha256_hex(bytes: &[u8]) -> String {
         .collect()
 }
 
-/// Vérifie le fichier téléchargé : taille annoncée, empreinte, et en-tête d'exécutable Windows.
-pub fn verify(bytes: &[u8], expected_size: u64, expected_hash: &str) -> Result<(), String> {
+/// Vérifie le fichier téléchargé : taille annoncée, empreinte, et en-tête d'exécutable.
+pub fn verify(
+    bytes: &[u8],
+    kind: Kind,
+    expected_size: u64,
+    expected_hash: &str,
+) -> Result<(), String> {
     if expected_size > 0 && bytes.len() as u64 != expected_size {
         return Err("update-corrupt".into());
     }
-    if !bytes.starts_with(b"MZ") || sha256_hex(bytes) != expected_hash {
+    if !bytes.starts_with(kind.magic()) || sha256_hex(bytes) != expected_hash {
         return Err("update-corrupt".into());
     }
     Ok(())
@@ -153,9 +203,10 @@ pub fn verify(bytes: &[u8], expected_size: u64, expected_hash: &str) -> Result<(
 pub async fn download(
     client: &Client,
     release: &Release,
+    kind: Kind,
     mut progress: impl FnMut(u64, u64),
 ) -> Result<Vec<u8>, String> {
-    let (exe, sums) = files(release).ok_or("update-none")?;
+    let (exe, sums) = files(release, kind).ok_or("update-none")?;
     if exe.size > MAX_EXE_BYTES {
         return Err("update-corrupt".into());
     }
@@ -172,7 +223,7 @@ pub async fn download(
     if sums_text.len() > MAX_SUMS_BYTES {
         return Err("update-no-hash".into());
     }
-    let expected = expected_hash(&sums_text, EXE_ASSET).ok_or("update-no-hash")?;
+    let expected = expected_hash(&sums_text, kind.asset()).ok_or("update-no-hash")?;
 
     let mut response = client
         .get(&exe.browser_download_url)
@@ -198,7 +249,7 @@ pub async fn download(
         }
         progress(bytes.len() as u64, total);
     }
-    verify(&bytes, exe.size, &expected)?;
+    verify(&bytes, kind, exe.size, &expected)?;
     Ok(bytes)
 }
 
@@ -206,7 +257,7 @@ fn sibling(exe: &Path, suffix: &str) -> PathBuf {
     let name = exe
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_else(|| EXE_ASSET.to_string());
+        .unwrap_or_else(|| "GiveawayIG".to_string());
     exe.with_file_name(format!("{name}{suffix}"))
 }
 
@@ -216,6 +267,12 @@ pub fn replace(exe: &Path, bytes: &[u8]) -> Result<(), String> {
     let staged = sibling(exe, ".new");
     let old = sibling(exe, ".old");
     std::fs::write(&staged, bytes).map_err(|_| "update-write".to_string())?;
+    #[cfg(unix)]
+    {
+        // L'AppImage doit rester exécutable.
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&staged, std::fs::Permissions::from_mode(0o755));
+    }
     // Un reste d'une mise à jour précédente.
     let _ = std::fs::remove_file(&old);
     if std::fs::rename(exe, &old).is_err() {
@@ -232,7 +289,10 @@ pub fn replace(exe: &Path, bytes: &[u8]) -> Result<(), String> {
 
 /// Au démarrage : supprime l'ancien exécutable laissé par une mise à jour.
 pub fn cleanup() {
-    let Ok(exe) = std::env::current_exe() else {
+    let Some(exe) = local_target()
+        .map(|(_, path)| path)
+        .or_else(|| std::env::current_exe().ok())
+    else {
         return;
     };
     for suffix in [".old", ".new"] {
@@ -290,7 +350,21 @@ mod tests {
             "v99.0.0",
             "https://github.com/someone/else/releases/download/",
         );
-        assert!(files(&elsewhere).is_none());
+        assert!(files(&elsewhere, Kind::WindowsExe).is_none());
+        // Les deux fichiers de la release : chaque système prend le sien.
+        let mut both = release("v99.0.0", repo);
+        both.assets.push(Asset {
+            name: APPIMAGE_ASSET.into(),
+            browser_download_url: format!("{repo}v99.0.0/{APPIMAGE_ASSET}"),
+            size: 10,
+        });
+        assert_eq!(files(&both, Kind::WindowsExe).unwrap().0.name, EXE_ASSET);
+        assert_eq!(
+            files(&both, Kind::LinuxAppImage).unwrap().0.name,
+            APPIMAGE_ASSET
+        );
+        // Une release sans AppImage (la 2.0.x) ne propose rien sous Linux.
+        assert!(files(&release("v99.0.0", repo), Kind::LinuxAppImage).is_none());
         assert!(!info(&elsewhere).can_install);
         let mut old_python = release("V1.3", repo);
         old_python.assets.clear();
@@ -317,12 +391,18 @@ mod tests {
     fn verifies_downloaded_file() {
         let exe = b"MZ fake windows program".to_vec();
         let hash = sha256_hex(&exe);
-        assert!(verify(&exe, exe.len() as u64, &hash).is_ok());
-        assert!(verify(&exe, 0, &hash).is_ok());
-        assert!(verify(&exe, 3, &hash).is_err());
-        assert!(verify(&exe, exe.len() as u64, &"0".repeat(64)).is_err());
+        let w = Kind::WindowsExe;
+        assert!(verify(&exe, w, exe.len() as u64, &hash).is_ok());
+        assert!(verify(&exe, w, 0, &hash).is_ok());
+        assert!(verify(&exe, w, 3, &hash).is_err());
+        assert!(verify(&exe, w, exe.len() as u64, &"0".repeat(64)).is_err());
         let not_exe = b"<html>error</html>".to_vec();
-        assert!(verify(&not_exe, 0, &sha256_hex(&not_exe)).is_err());
+        assert!(verify(&not_exe, w, 0, &sha256_hex(&not_exe)).is_err());
+        // AppImage : un exécutable Linux (ELF), pas un exe Windows.
+        let elf = b"\x7fELF fake appimage".to_vec();
+        assert!(verify(&elf, Kind::LinuxAppImage, 0, &sha256_hex(&elf)).is_ok());
+        assert!(verify(&exe, Kind::LinuxAppImage, 0, &hash).is_err());
+        assert!(verify(&elf, w, 0, &sha256_hex(&elf)).is_err());
         assert_eq!(
             sha256_hex(b"abc"),
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"

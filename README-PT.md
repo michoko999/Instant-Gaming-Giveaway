@@ -94,6 +94,20 @@ Sem instalação: tudo fica numa pasta `GiveawayIG-data` ao lado do executável.
 
 </td>
 </tr>
+<tr>
+<td valign="top">
+
+### 🏆 Saber quando ganhas
+Em cada verificação das listas, a aplicação procura as tuas contas na lista de vencedores dos giveaways. Um prémio aparece no ecrã inicial e em **Os meus prémios**, no histórico.
+
+</td>
+<td valign="top">
+
+### 🔔 Iniciar e esquecer
+**Iniciar para todas as contas** encadeia as sessões uma após a outra. Uma notificação avisa-te no fim, um aviso lembra-te que começa um novo mês e os giveaways novos têm a etiqueta **Novo**. Atalhos: Espaço (pausa), → (saltar), Esc (parar).
+
+</td>
+</tr>
 </table>
 
 ## 📸 Capturas de ecrã
