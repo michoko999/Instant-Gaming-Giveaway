@@ -20,7 +20,9 @@ export interface Settings {
   language: Lang;
   mode: SessionMode;
   secondsPerGiveaway: number;
-  skipDoneToday: boolean;
+  skipDoneThisMonth: boolean;
+  safeMode: boolean;
+  sessionLimit: number;
   accent: string;
   skyAnimation: boolean;
   syncOnStart: boolean;
@@ -41,9 +43,8 @@ export interface Counts {
 
 export interface Stats {
   totalParticipations: number;
-  today: number;
-  streakDays: number;
-  bestStreak: number;
+  thisMonth: number;
+  doneThisMonth: number;
 }
 
 export interface SessionSummary {
@@ -59,6 +60,8 @@ export interface SessionSummary {
   skipped: number;
   pending: string[];
   stopped: boolean;
+  stopReason: 'warning' | 'captcha' | 'errors' | null;
+  limited: number;
 }
 
 export interface Meta {

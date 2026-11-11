@@ -53,6 +53,9 @@
           <span class="dot" class:pulse={!paused && !needsLogin}></span>
           {needsLogin ? t('session.login') : paused ? t('session.paused') : t('session.running')}
         </span>
+        {#if !manual && app.overview?.settings.safeMode}
+          <span class="safe"><Icon name="shield" size={14} />{t('session.safe')}</span>
+        {/if}
       </div>
       <div class="row">
         {#if paused || needsLogin}
@@ -217,6 +220,13 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
+  }
+  .safe {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
   }
   .banner {
     display: flex;

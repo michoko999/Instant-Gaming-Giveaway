@@ -16,6 +16,16 @@
     seconds = settings?.secondsPerGiveaway ?? 4;
   });
 
+  // Estimation d'une session automatique : rythme minimum et limite du mode prudent.
+  const estimate = $derived.by(() => {
+    const limit = settings?.sessionLimit ?? 0;
+    const count = limit > 0 ? Math.min(queue, limit) : queue;
+    const pace = settings?.safeMode ? Math.max(seconds, 8) : seconds;
+    return count * (pace + 3);
+  });
+  const monthDone = $derived(o?.stats.doneThisMonth ?? 0);
+  const monthTotal = $derived(monthDone + queue);
+
   const headline = $derived.by(() => {
     if (queue > 0) return { a: t('home.titleA', { n: queue }), b: t('home.titleB') };
     if ((counts?.active ?? 0) > 0) return { a: t('home.doneA'), b: t('home.doneB') };
@@ -56,7 +66,7 @@
             {t('home.startManual')}
           </button>
         </div>
-        <span class="faint small">{t('home.estimate', { duration: duration(queue * (seconds + 3)) })}</span>
+        <span class="faint small">{t('home.estimate', { duration: duration(estimate) })}</span>
       {/if}
 
       <button type="button" class="btn btn-quiet refresh" onclick={() => updateLists('all')} disabled={busy}>
@@ -120,11 +130,12 @@
     </section>
 
     <section class="tile glass">
-      <h2 class="label"><span class="flame"><Icon name="flame" size={14} /></span>{t('home.streak')}</h2>
-      <p class="serif value">{t('home.streakDays', { n: o?.stats.streakDays ?? 0 })}</p>
-      <p class="muted small">
-        {t('home.streakDetail', { total: o?.stats.totalParticipations ?? 0, best: o?.stats.bestStreak ?? 0 })}
-      </p>
+      <h2 class="label">{t('home.month')}</h2>
+      <p class="serif value">{t('home.monthDone', { done: monthDone, total: monthTotal })}</p>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax={monthTotal} aria-valuenow={monthDone} aria-label={t('home.month')}>
+        <span style="width:{monthTotal > 0 ? (monthDone / monthTotal) * 100 : 0}%"></span>
+      </div>
+      <p class="muted small">{t('home.monthHint')}</p>
     </section>
   </div>
 </div>
@@ -222,9 +233,18 @@
     align-items: center;
     gap: 6px;
   }
-  .flame {
-    color: var(--accent);
-    display: inline-flex;
+  .bar {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+  }
+  .bar span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--accent);
+    transition: width 0.6s ease;
   }
   .value {
     font-size: 34px;

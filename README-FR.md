@@ -23,7 +23,7 @@ Giveaway IG est une application Windows **portable** (aucune installation) qui r
 - **Mode manuel** : les concours s'ouvrent un par un ; tu cliques sur « Participer » et l'application passe au suivant dès qu'elle détecte ta participation.
 - **Listes toujours à jour** : deux listes communautaires intégrées, plus tes propres fichiers (CSV, TXT, JSON) ou listes en ligne.
 - **Vérification rapide** : des centaines de concours testés en parallèle en moins d'une minute.
-- **Historique et statistiques** : participations du jour, série de jours d'affilée, record, export CSV.
+- **Suivi du mois** : chaque concours accepte une participation par mois ; l'application passe ceux déjà faits ce mois-ci et garde un historique exportable en CSV.
 - **7 langues** : français, English, Español, Deutsch, Português, Italiano, Polski.
 - **Portable** : tes réglages et ta session sont rangés dans un dossier `GiveawayIG-data` à côté de l'exécutable.
 - **Mises à jour** : l'application te prévient quand une nouvelle version sort (elle ne télécharge rien toute seule).
@@ -60,6 +60,16 @@ Si un antivirus signale quand même l'application, merci d'ouvrir une [issue](ht
 ## ⚠️ À savoir avant d'utiliser le mode automatique
 
 Les règlements de concours interdisent souvent les participations faites par un « robot ». Utiliser le mode automatique peut donc entraîner l'annulation de participations, voire une sanction sur ton compte Instant Gaming. **C'est à toi de décider** ; en cas de doute, utilise le mode manuel.
+
+Le **mode prudent**, activé par défaut, limite les risques sans les supprimer :
+
+- au moins 8 secondes entre deux concours, et un nombre limité de concours par session (40 par défaut) ;
+- arrêt immédiat de la session si le site affiche un avertissement ou demande plusieurs vérifications humaines ;
+- arrêt après plusieurs erreurs d'affilée ;
+- les concours déjà faits ce mois-ci ne sont pas rouverts ;
+- la vérification des listes se fait sans ton compte, à rythme modéré.
+
+L'application ne cherche pas à se faire passer pour un humain (pas de faux mouvements de souris, pas de contournement de captcha).
 
 ## 🔒 Confidentialité
 

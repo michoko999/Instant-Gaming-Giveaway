@@ -52,6 +52,18 @@
       </p>
     </div>
 
+    {#if s.stopReason}
+      <p class="notice glass">
+        <Icon name="shield" size={18} />
+        <span>{t(s.stopReason === 'warning' ? 'recap.stopWarning' : s.stopReason === 'captcha' ? 'recap.stopCaptcha' : 'recap.stopErrors')}</span>
+      </p>
+    {:else if s.limited > 0 && !s.stopped}
+      <p class="notice glass">
+        <Icon name="shield" size={18} />
+        <span>{t('recap.limited', { n: s.limited })}</span>
+      </p>
+    {/if}
+
     {#each s.pending as code (code)}
       <section class="pending glass">
         <span class="coral"><Icon name="alert" size={20} /></span>
@@ -125,6 +137,20 @@
   .head p {
     margin: 0;
     font-size: 16px;
+  }
+  .notice {
+    margin: 0;
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    text-align: left;
+    font-size: 14px;
+  }
+  .notice :global(svg) {
+    color: var(--accent);
   }
   .pending {
     width: 100%;

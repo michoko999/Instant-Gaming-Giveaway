@@ -16,6 +16,8 @@
   let sourceName = $state('');
   let sourceUrl = $state('');
 
+  const LIMITS = [20, 40, 80, 0];
+
   async function login() {
     try {
       await api.openLogin();
@@ -149,9 +151,34 @@
             </div>
           </div>
           <label class="line">
-            <span>{t('set.skipToday')}</span>
-            <input type="checkbox" class="switch" checked={s.skipDoneToday} onchange={() => saveSettings({ skipDoneToday: !s.skipDoneToday })} />
+            <span>{t('set.skipMonth')}</span>
+            <input
+              type="checkbox"
+              class="switch"
+              checked={s.skipDoneThisMonth}
+              onchange={() => saveSettings({ skipDoneThisMonth: !s.skipDoneThisMonth })}
+            />
           </label>
+          <label class="line">
+            <span class="stack">
+              <span class="row-inline"><Icon name="shield" size={16} />{t('set.safe')}</span>
+              <span class="faint small">{t('set.safeHint')}</span>
+            </span>
+            <input type="checkbox" class="switch" checked={s.safeMode} onchange={() => saveSettings({ safeMode: !s.safeMode })} />
+          </label>
+          <div class="line">
+            <span class="stack">
+              <span id="limit-label">{t('set.limit')}</span>
+              <span class="faint small">{t('set.limitHint')}</span>
+            </span>
+            <div class="seg" role="group" aria-labelledby="limit-label">
+              {#each LIMITS as limit (limit)}
+                <button type="button" aria-pressed={s.sessionLimit === limit} onclick={() => saveSettings({ sessionLimit: limit })}>
+                  {limit === 0 ? t('set.unlimited') : limit}
+                </button>
+              {/each}
+            </div>
+          </div>
         </section>
 
         <section class="card glass">
@@ -300,6 +327,8 @@
     display: flex;
     flex-direction: column;
     line-height: 1.35;
+    flex: 1 1 240px;
+    min-width: 0;
   }
   .min0 {
     min-width: 0;
@@ -345,6 +374,14 @@
     font-size: 22px;
     width: 44px;
     text-align: right;
+  }
+  .row-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .row-inline :global(svg) {
+    color: var(--accent);
   }
   .status {
     display: flex;

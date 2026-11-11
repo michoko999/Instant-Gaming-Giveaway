@@ -110,7 +110,8 @@ const SCRIPT_TEMPLATE: &str = r#"(() => {
         };
       }
     } catch (e) { /* page différente de celle attendue */ }
-    await sleep(700);
+    // Laisse la page finir de se charger avant de cliquer.
+    await sleep(1500);
     button.scrollIntoView({ block: 'center' });
     button.click();
     for (let i = 0; i < 60; i++) {

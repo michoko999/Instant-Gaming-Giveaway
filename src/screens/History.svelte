@@ -61,9 +61,8 @@
 
   <dl class="stats">
     <div class="glass"><dd class="serif accent">{stats?.totalParticipations ?? 0}</dd><dt>{t('hist.total')}</dt></div>
-    <div class="glass"><dd class="serif">{stats?.today ?? 0}</dd><dt>{t('hist.today')}</dt></div>
-    <div class="glass"><dd class="serif">{stats?.streakDays ?? 0}</dd><dt>{t('hist.streak')}</dt></div>
-    <div class="glass"><dd class="serif">{stats?.bestStreak ?? 0}</dd><dt>{t('hist.best')}</dt></div>
+    <div class="glass"><dd class="serif">{stats?.thisMonth ?? 0}</dd><dt>{t('hist.month')}</dt></div>
+    <div class="glass"><dd class="serif">{app.overview?.counts.queue ?? 0}</dd><dt>{t('hist.remaining')}</dt></div>
   </dl>
 
   {#if loaded && entries.length === 0}

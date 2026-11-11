@@ -1,12 +1,12 @@
 //! Stockage local en JSON, dans le dossier de données de l'application.
 //! Chaque fichier est écrit de façon atomique (fichier temporaire puis renommage).
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use chrono::{DateTime, Local, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, Local, Utc};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -128,22 +128,20 @@ impl Store {
         }
     }
 
-    fn done_today(g: &Giveaway, today: NaiveDate) -> bool {
+    /// Le concours a déjà reçu une participation pendant le mois civil en cours.
+    fn done_this_month(g: &Giveaway, now: DateTime<Utc>) -> bool {
         match (g.last_participation, g.last_outcome) {
-            (Some(at), Some(outcome)) => {
-                outcome.done_for_today() && at.with_timezone(&Local).date_naive() == today
-            }
+            (Some(at), Some(outcome)) => outcome.done_for_month() && same_month(at, now),
             _ => false,
         }
     }
 
     /// Codes à traiter lors d'une session, dans l'ordre de la liste.
     pub fn session_queue(&self, now: DateTime<Utc>) -> Vec<String> {
-        let today = now.with_timezone(&Local).date_naive();
         self.giveaways
             .iter()
             .filter(|g| g.status == Status::Active && !g.ignored)
-            .filter(|g| !(self.settings.skip_done_today && Self::done_today(g, today)))
+            .filter(|g| !(self.settings.skip_done_this_month && Self::done_this_month(g, now)))
             .map(|g| g.code.clone())
             .collect()
     }
@@ -191,7 +189,12 @@ impl Store {
                     }
                 }
                 Outcome::Captcha | Outcome::Error | Outcome::Login => {
-                    g.last_outcome = Some(outcome);
+                    // Ne pas effacer une participation déjà réussie ce mois-ci.
+                    let already_done = g.last_outcome.map(|o| o.done_for_month()).unwrap_or(false)
+                        && g.last_participation.map(|at| same_month(at, now)).unwrap_or(false);
+                    if !already_done {
+                        g.last_outcome = Some(outcome);
+                    }
                 }
                 Outcome::Skipped => {}
             }
@@ -199,60 +202,29 @@ impl Store {
     }
 
     pub fn stats(&self, now: DateTime<Utc>) -> Stats {
-        let today = now.with_timezone(&Local).date_naive();
-        let mut days: BTreeSet<NaiveDate> = BTreeSet::new();
         let mut stats = Stats::default();
+        let mut done: HashSet<String> = HashSet::new();
         for h in &self.history {
+            let this_month = same_month(h.at, now);
             if h.outcome.counts_as_participation() {
                 stats.total_participations += 1;
-                let day = h.at.with_timezone(&Local).date_naive();
-                if day == today {
-                    stats.today += 1;
+                if this_month {
+                    stats.this_month += 1;
                 }
-                days.insert(day);
+            }
+            if this_month && h.outcome.done_for_month() {
+                done.insert(h.code.to_ascii_uppercase());
             }
         }
-        stats.streak_days = current_streak(&days, today);
-        stats.best_streak = best_streak(&days);
+        stats.done_this_month = done.len();
         stats
     }
 }
 
-/// Série en cours : jours consécutifs avec au moins une participation,
-/// en partant d'aujourd'hui (ou d'hier si rien n'a encore été fait aujourd'hui).
-pub fn current_streak(days: &BTreeSet<NaiveDate>, today: NaiveDate) -> u32 {
-    let mut day = if days.contains(&today) {
-        today
-    } else {
-        match today.pred_opt() {
-            Some(y) if days.contains(&y) => y,
-            _ => return 0,
-        }
-    };
-    let mut streak = 0;
-    while days.contains(&day) {
-        streak += 1;
-        match day.pred_opt() {
-            Some(prev) => day = prev,
-            None => break,
-        }
-    }
-    streak
-}
-
-pub fn best_streak(days: &BTreeSet<NaiveDate>) -> u32 {
-    let mut best = 0;
-    let mut run = 0;
-    let mut previous: Option<NaiveDate> = None;
-    for &day in days {
-        run = match previous {
-            Some(p) if p.succ_opt() == Some(day) => run + 1,
-            _ => 1,
-        };
-        best = best.max(run);
-        previous = Some(day);
-    }
-    best
+/// Deux dates tombent-elles dans le même mois civil (heure locale) ?
+pub fn same_month(a: DateTime<Utc>, b: DateTime<Utc>) -> bool {
+    let (a, b) = (a.with_timezone(&Local), b.with_timezone(&Local));
+    a.year() == b.year() && a.month() == b.month()
 }
 
 fn read_json<T: DeserializeOwned + Default>(path: &Path) -> T {
@@ -292,11 +264,7 @@ pub fn csv_field(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{Duration, TimeZone};
-
-    fn day(y: i32, m: u32, d: u32) -> NaiveDate {
-        NaiveDate::from_ymd_opt(y, m, d).unwrap()
-    }
+    use chrono::TimeZone;
 
     #[test]
     fn merge_deduplicates_case_insensitively() {
@@ -312,7 +280,7 @@ mod tests {
     }
 
     #[test]
-    fn queue_skips_ignored_ended_and_done_today() {
+    fn queue_skips_ignored_ended_and_done_this_month() {
         let mut store = Store::in_memory();
         let now = Utc::now();
         store.merge_codes(
@@ -326,33 +294,56 @@ mod tests {
         store.find_mut("C").unwrap().ignored = true;
         store.record("D", Outcome::Participated, SessionMode::Auto, None, now);
         assert_eq!(store.session_queue(now), vec!["A".to_string()]);
-        store.settings.skip_done_today = false;
+        store.settings.skip_done_this_month = false;
         assert_eq!(store.session_queue(now), vec!["A".to_string(), "D".to_string()]);
     }
 
     #[test]
-    fn streaks() {
-        let days: BTreeSet<NaiveDate> =
-            [day(2026, 11, 1), day(2026, 11, 2), day(2026, 11, 3), day(2026, 11, 7), day(2026, 11, 8)]
-                .into_iter()
-                .collect();
-        assert_eq!(current_streak(&days, day(2026, 11, 8)), 2);
-        assert_eq!(current_streak(&days, day(2026, 11, 9)), 2);
-        assert_eq!(current_streak(&days, day(2026, 11, 10)), 0);
-        assert_eq!(best_streak(&days), 3);
+    fn participation_from_last_month_is_queued_again() {
+        let mut store = Store::in_memory();
+        let now = Local.with_ymd_and_hms(2026, 11, 11, 20, 0, 0).unwrap().with_timezone(&Utc);
+        let last_month = Local.with_ymd_and_hms(2026, 10, 28, 20, 0, 0).unwrap().with_timezone(&Utc);
+        store.merge_codes(&[("A".into(), "s".into())], last_month);
+        store.set_status("A", Status::Active, last_month);
+        store.record("A", Outcome::Participated, SessionMode::Auto, None, last_month);
+        assert_eq!(store.session_queue(now), vec!["A".to_string()]);
+        assert!(store.session_queue(last_month).is_empty());
     }
 
     #[test]
-    fn stats_count_participations() {
+    fn opened_page_is_not_counted_as_done() {
+        let mut store = Store::in_memory();
+        let now = Utc::now();
+        store.merge_codes(&[("A".into(), "s".into())], now);
+        store.set_status("A", Status::Active, now);
+        store.record("A", Outcome::Opened, SessionMode::Manual, None, now);
+        assert_eq!(store.session_queue(now), vec!["A".to_string()]);
+    }
+
+    #[test]
+    fn error_does_not_erase_a_success_this_month() {
+        let mut store = Store::in_memory();
+        let now = Utc::now();
+        store.merge_codes(&[("A".into(), "s".into())], now);
+        store.set_status("A", Status::Active, now);
+        store.record("A", Outcome::Participated, SessionMode::Auto, None, now);
+        store.record("A", Outcome::Error, SessionMode::Auto, None, now);
+        assert!(store.session_queue(now).is_empty());
+    }
+
+    #[test]
+    fn monthly_stats() {
         let mut store = Store::in_memory();
         let now = Local.with_ymd_and_hms(2026, 11, 11, 20, 0, 0).unwrap().with_timezone(&Utc);
+        let last_month = Local.with_ymd_and_hms(2026, 10, 2, 20, 0, 0).unwrap().with_timezone(&Utc);
         store.record("A", Outcome::Participated, SessionMode::Auto, None, now);
         store.record("B", Outcome::Already, SessionMode::Auto, None, now);
-        store.record("C", Outcome::Opened, SessionMode::Manual, None, now - Duration::days(1));
+        store.record("C", Outcome::Opened, SessionMode::Manual, None, now);
+        store.record("D", Outcome::Participated, SessionMode::Auto, None, last_month);
         let stats = store.stats(now);
-        assert_eq!(stats.total_participations, 2);
-        assert_eq!(stats.today, 1);
-        assert_eq!(stats.streak_days, 2);
+        assert_eq!(stats.total_participations, 3);
+        assert_eq!(stats.this_month, 2);
+        assert_eq!(stats.done_this_month, 2);
     }
 
     #[test]

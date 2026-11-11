@@ -54,9 +54,10 @@ impl Outcome {
         matches!(self, Outcome::Participated | Outcome::Opened)
     }
 
-    /// Le concours est « fait » pour aujourd'hui.
-    pub fn done_for_today(self) -> bool {
-        matches!(self, Outcome::Participated | Outcome::Already | Outcome::Opened)
+    /// Le concours est « fait » pour le mois : Instant Gaming n'accepte qu'une participation
+    /// par concours et par mois. Une page seulement ouverte (mode manuel) ne compte pas.
+    pub fn done_for_month(self) -> bool {
+        matches!(self, Outcome::Participated | Outcome::Already)
     }
 }
 
@@ -108,7 +109,12 @@ pub struct Settings {
     pub language: String,
     pub mode: SessionMode,
     pub seconds_per_giveaway: f64,
-    pub skip_done_today: bool,
+    #[serde(alias = "skipDoneToday")]
+    pub skip_done_this_month: bool,
+    /// Mode prudent : rythme minimum et arrêt automatique aux premiers signaux du site.
+    pub safe_mode: bool,
+    /// Nombre maximal de concours par session automatique (0 = illimité).
+    pub session_limit: u32,
     pub accent: String,
     pub sky_animation: bool,
     pub sync_on_start: bool,
@@ -124,7 +130,9 @@ impl Default for Settings {
             language: "fr".into(),
             mode: SessionMode::Auto,
             seconds_per_giveaway: 4.0,
-            skip_done_today: true,
+            skip_done_this_month: true,
+            safe_mode: true,
+            session_limit: 40,
             accent: DEFAULT_ACCENT.into(),
             sky_animation: true,
             sync_on_start: true,
@@ -146,6 +154,9 @@ impl Settings {
             self.seconds_per_giveaway = 4.0;
         }
         self.seconds_per_giveaway = self.seconds_per_giveaway.clamp(2.0, 30.0);
+        if self.session_limit > 0 {
+            self.session_limit = self.session_limit.clamp(5, 500);
+        }
         if !is_hex_color(&self.accent) {
             self.accent = DEFAULT_ACCENT.into();
         }
@@ -215,6 +226,10 @@ pub struct SessionSummary {
     /// Concours qui demandent une action manuelle (vérification humaine).
     pub pending: Vec<String>,
     pub stopped: bool,
+    /// Raison d'un arrêt automatique : "warning", "captcha" ou "errors".
+    pub stop_reason: Option<String>,
+    /// Limite de concours appliquée à cette session (0 = aucune).
+    pub limited: usize,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -241,7 +256,8 @@ pub struct Counts {
 #[serde(rename_all = "camelCase")]
 pub struct Stats {
     pub total_participations: usize,
-    pub today: usize,
-    pub streak_days: u32,
-    pub best_streak: u32,
+    /// Participations enregistrées pendant le mois en cours.
+    pub this_month: usize,
+    /// Concours différents déjà faits ce mois-ci.
+    pub done_this_month: usize,
 }

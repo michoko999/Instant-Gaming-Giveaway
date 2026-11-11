@@ -23,7 +23,7 @@ Giveaway IG is a **portable** Windows app (no installer) that fetches the Instan
 - **Manual mode**: giveaways open one by one; click “Participate” and the app moves on as soon as it notices.
 - **Always up-to-date lists**: two built-in community lists, plus your own files (CSV, TXT, JSON) or online lists.
 - **Fast checking**: hundreds of giveaways tested in parallel in under a minute.
-- **History and stats**: today's entries, day streak, best streak, CSV export.
+- **Monthly tracking**: each giveaway accepts one entry per month; the app skips the ones already done this month and keeps a history you can export as CSV.
 - **7 languages**: Français, English, Español, Deutsch, Português, Italiano, Polski.
 - **Portable**: settings and session live in a `GiveawayIG-data` folder next to the executable.
 - **Updates**: the app tells you when a new version is out (it never downloads anything by itself).
@@ -60,6 +60,16 @@ If an antivirus still flags the app, please open an [issue](https://github.com/m
 ## ⚠️ Before using automatic mode
 
 Giveaway rules often forbid entries made by “bots”. Using automatic mode may therefore get entries cancelled or even your Instant Gaming account sanctioned. **It is your call**; if in doubt, use manual mode.
+
+**Careful mode**, on by default, lowers the risk without removing it:
+
+- at least 8 seconds between giveaways, and a limited number of giveaways per session (40 by default);
+- the session stops right away if the site shows a warning or asks for several human verifications;
+- it also stops after several errors in a row;
+- giveaways already entered this month are not reopened;
+- list checks run without your account, at a moderate pace.
+
+The app does not try to pass itself off as a human (no fake mouse movements, no captcha bypass).
 
 ## 🔒 Privacy
 

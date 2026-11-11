@@ -16,6 +16,12 @@ use crate::state::AppState;
 const AUTO_TIMEOUT: Duration = Duration::from_secs(45);
 /// Pause après une participation détectée en mode manuel, avant de passer au suivant.
 const MANUAL_AFTER_SUCCESS: Duration = Duration::from_millis(1200);
+/// Mode prudent : temps minimum entre deux concours en mode automatique.
+const SAFE_MIN_DELAY: f64 = 8.0;
+/// Mode prudent : arrêt après ce nombre de vérifications humaines dans la session.
+const SAFE_MAX_CAPTCHAS: usize = 2;
+/// Arrêt après ce nombre d'erreurs techniques d'affilée (site injoignable, page inattendue...).
+const MAX_CONSECUTIVE_ERRORS: usize = 3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Control {
@@ -81,7 +87,8 @@ enum Wait {
 }
 
 /// Lance une session en arrière-plan. Renvoie le nombre de concours à traiter.
-pub fn start(app: &AppHandle, mode: SessionMode, codes: Vec<String>) -> Result<usize, String> {
+/// `limited` vaut la limite appliquée à la file (0 si aucune).
+pub fn start(app: &AppHandle, mode: SessionMode, codes: Vec<String>, limited: usize) -> Result<usize, String> {
     if codes.is_empty() {
         return Err("no-giveaways".into());
     }
@@ -101,7 +108,7 @@ pub fn start(app: &AppHandle, mode: SessionMode, codes: Vec<String>) -> Result<u
     let total = codes.len();
     let handle = app.clone();
     tauri::async_runtime::spawn(async move {
-        run(handle, mode, codes, ctl_rx, rep_rx).await;
+        run(handle, mode, codes, limited, ctl_rx, rep_rx).await;
     });
     Ok(total)
 }
@@ -151,17 +158,19 @@ fn estimate(mode: SessionMode, remaining: usize, delay: f64) -> u64 {
     (remaining as f64 * per_item).round() as u64
 }
 
-fn map_auto_report(report: &Report) -> Option<(Outcome, Option<String>)> {
+/// Traduit le rapport de la page. `None` : le compte n'est pas connecté.
+/// Le booléen indique un avertissement affiché par le site lui-même.
+fn map_auto_report(report: &Report) -> Option<(Outcome, Option<String>, bool)> {
     Some(match report.kind.as_str() {
-        "participated" => (Outcome::Participated, None),
-        "already" => (Outcome::Already, None),
-        "ended" => (Outcome::Ended, None),
-        "captcha" => (Outcome::Captcha, None),
+        "participated" => (Outcome::Participated, None, false),
+        "already" => (Outcome::Already, None, false),
+        "ended" => (Outcome::Ended, None, false),
+        "captcha" => (Outcome::Captcha, None, false),
         "login" => return None,
-        "nobutton" => (Outcome::Error, Some("button-not-found".into())),
-        "timeout" => (Outcome::Error, Some("no-response".into())),
-        "error" => (Outcome::Error, report.message.clone()),
-        other => (Outcome::Error, Some(other.to_string())),
+        "nobutton" => (Outcome::Error, Some("button-not-found".into()), false),
+        "timeout" => (Outcome::Error, Some("no-response".into()), false),
+        "error" => (Outcome::Error, report.message.clone(), true),
+        other => (Outcome::Error, Some(other.to_string()), false),
     })
 }
 
@@ -169,16 +178,23 @@ async fn run(
     app: AppHandle,
     mode: SessionMode,
     codes: Vec<String>,
+    limited: usize,
     mut ctl: UnboundedReceiver<Control>,
     mut rep: UnboundedReceiver<Report>,
 ) {
     let state = app.state::<AppState>();
-    let (lang, delay) = match state.store.lock() {
-        Ok(store) => (store.settings.language.clone(), store.settings.seconds_per_giveaway),
-        Err(_) => ("fr".to_string(), 4.0),
+    let (lang, delay, safe) = match state.store.lock() {
+        Ok(store) => (store.settings.language.clone(), store.settings.seconds_per_giveaway, store.settings.safe_mode),
+        Err(_) => ("fr".to_string(), 4.0, true),
     };
+    let careful = safe && mode == SessionMode::Auto;
+    // En mode prudent, on laisse toujours au moins quelques secondes entre deux concours.
+    let delay = if careful { delay.max(SAFE_MIN_DELAY) } else { delay };
     let total = codes.len();
-    let mut summary = SessionSummary { started_at: Some(Utc::now()), mode, total, ..SessionSummary::default() };
+    let mut summary =
+        SessionSummary { started_at: Some(Utc::now()), mode, total, limited, ..SessionSummary::default() };
+    let mut captchas = 0usize;
+    let mut consecutive_errors = 0usize;
     let mut progress = Progress {
         state: "running",
         mode,
@@ -215,6 +231,7 @@ async fn run(
         state.set_script(Some(automation::build_script(script_mode, &code, &token)));
         while rep.try_recv().is_ok() {}
 
+        let mut site_warning = false;
         let (outcome, message) = match automation::open_ig(&app, &giveaway_url(&lang, &code), first) {
             Err(error) => (Outcome::Error, Some(error)),
             Ok(_) => {
@@ -222,7 +239,10 @@ async fn run(
                 match mode {
                     SessionMode::Auto => match wait_event(&mut ctl, &mut rep, &token, AUTO_TIMEOUT).await {
                         Wait::Report(report) => match map_auto_report(&report) {
-                            Some(result) => result,
+                            Some((outcome, message, warning)) => {
+                                site_warning = warning;
+                                (outcome, message)
+                            }
                             None => {
                                 // Compte déconnecté : on attend que l'utilisateur se connecte.
                                 progress.state = "login";
@@ -331,6 +351,32 @@ async fn run(
         let _ = app.emit("session-log", LogEntry { at: Utc::now(), code: code.clone(), outcome, message });
         i += 1;
         progress.index = i;
+
+        // Garde-fous : on s'arrête dès que le site montre des signes de méfiance ou ne répond plus.
+        if outcome == Outcome::Error && !site_warning {
+            consecutive_errors += 1;
+        } else if outcome != Outcome::Skipped {
+            consecutive_errors = 0;
+        }
+        if outcome == Outcome::Captcha {
+            captchas += 1;
+        }
+        let stop_reason = if careful && site_warning {
+            Some("warning")
+        } else if careful && captchas >= SAFE_MAX_CAPTCHAS {
+            Some("captcha")
+        } else if mode == SessionMode::Auto && consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+            Some("errors")
+        } else {
+            None
+        };
+        if let Some(reason) = stop_reason {
+            if i < total {
+                summary.stopped = true;
+                summary.stop_reason = Some(reason.to_string());
+                break 'session;
+            }
+        }
 
         // Rythme entre deux concours en mode automatique.
         if mode == SessionMode::Auto && i < total && outcome != Outcome::Skipped {

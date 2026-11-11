@@ -14,6 +14,15 @@
   const stepIndex = $derived(step === 'connect' || step === 'waiting' ? 0 : step === 'check' ? 1 : 2);
   const connected = $derived(app.overview?.settings.accountConnected ?? false);
   const counts = $derived(app.overview?.counts);
+  const estimate = $derived.by(() => {
+    const queue = counts?.queue ?? 0;
+    const settings = app.overview?.settings;
+    if (mode === 'manual') return queue * seconds;
+    const limit = settings?.sessionLimit ?? 0;
+    const count = limit > 0 ? Math.min(queue, limit) : queue;
+    const pace = settings?.safeMode ? Math.max(seconds, 8) : seconds;
+    return count * (pace + 3);
+  });
 
   async function login() {
     try {
@@ -169,7 +178,7 @@
         <label class="label" for="onb-delay">{t('set.delay')} · <span class="serif num-inline">{seconds} s</span></label>
         <input id="onb-delay" type="range" min="2" max="15" step="1" bind:value={seconds} />
         {#if (counts?.queue ?? 0) > 0}
-          <span class="faint small">{duration((counts?.queue ?? 0) * (seconds + (mode === 'auto' ? 3 : 0)))}</span>
+          <span class="faint small">{duration(estimate)}</span>
         {/if}
       </div>
     </div>

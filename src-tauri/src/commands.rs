@@ -216,7 +216,11 @@ pub async fn check_giveaways(app: AppHandle, scope: String) -> CmdResult<CheckRe
         progress.code = code.to_string();
         progress.status = status;
         if let Ok(mut store) = state.store.lock() {
-            store.set_status(code, status, Utc::now());
+            // Une page injoignable (réseau, site lent) ne doit pas faire oublier un état déjà connu.
+            let known = store.find_mut(code).map(|g| g.status != Status::Unknown).unwrap_or(false);
+            if status != Status::Unknown || !known {
+                store.set_status(code, status, Utc::now());
+            }
         }
         let _ = app.emit("check-progress", progress.clone());
     })
@@ -316,19 +320,28 @@ pub async fn export_history(app: AppHandle) -> CmdResult<Option<String>> {
     Ok(Some(path.display().to_string()))
 }
 
+// Les commandes qui créent ou ferment des fenêtres sont `async` : sous Windows, une commande
+// synchrone s'exécute sur le fil principal et bloque WebView2 (fenêtre blanche, application figée).
 #[tauri::command]
-pub fn start_session(app: AppHandle, mode: Option<SessionMode>, codes: Option<Vec<String>>) -> CmdResult<usize> {
+pub async fn start_session(app: AppHandle, mode: Option<SessionMode>, codes: Option<Vec<String>>) -> CmdResult<usize> {
     let state = app.state::<AppState>();
-    let (mode, queue) = {
+    let (mode, queue, limited) = {
         let store = state.store.lock().map_err(lock_err)?;
         let mode = mode.unwrap_or(store.settings.mode);
-        let queue = match codes {
+        let mut queue: Vec<String> = match codes {
             Some(list) => list.into_iter().filter_map(|c| sources::extract_code(&c)).collect(),
             None => store.session_queue(Utc::now()),
         };
-        (mode, queue)
+        // Limite par session : uniquement en mode automatique.
+        let limit = store.settings.session_limit as usize;
+        let mut limited = 0;
+        if mode == SessionMode::Auto && limit > 0 && queue.len() > limit {
+            queue.truncate(limit);
+            limited = limit;
+        }
+        (mode, queue, limited)
     };
-    session::start(&app, mode, queue)
+    session::start(&app, mode, queue, limited)
 }
 
 #[tauri::command]
@@ -342,7 +355,7 @@ pub fn session_control(state: State<'_, AppState>, action: String) -> CmdResult<
 }
 
 #[tauri::command]
-pub fn open_login(app: AppHandle) -> CmdResult<()> {
+pub async fn open_login(app: AppHandle) -> CmdResult<()> {
     let state = app.state::<AppState>();
     if state.session_running() {
         return Err("session-running".into());
@@ -380,19 +393,25 @@ pub async fn verify_login(app: AppHandle) -> CmdResult<bool> {
     let result = match opened {
         Err(e) => Err(e),
         Ok(_) => {
-            let wait = tokio::time::timeout(Duration::from_secs(30), async {
-                while let Some(report) = rx.recv().await {
-                    if report.token == token {
-                        return Some(report.kind);
+            // Attend la réponse de la page, en abandonnant si l'utilisateur ferme la fenêtre.
+            let mut outcome: CmdResult<bool> = Err("no-response".into());
+            for _ in 0..60 {
+                match tokio::time::timeout(Duration::from_millis(500), rx.recv()).await {
+                    Ok(Some(report)) if report.token == token => {
+                        outcome = Ok(report.kind == "connected");
+                        break;
+                    }
+                    Ok(Some(_)) => {}
+                    Ok(None) => break,
+                    Err(_) => {
+                        if automation::ig_window(&app).is_none() {
+                            outcome = Err("ig-closed".into());
+                            break;
+                        }
                     }
                 }
-                None
-            })
-            .await;
-            match wait {
-                Ok(Some(kind)) => Ok(kind == "connected"),
-                _ => Err("no-response".into()),
             }
+            outcome
         }
     };
     state.set_script(None);
@@ -413,7 +432,7 @@ pub async fn verify_login(app: AppHandle) -> CmdResult<bool> {
 }
 
 #[tauri::command]
-pub fn logout(app: AppHandle) -> CmdResult<()> {
+pub async fn logout(app: AppHandle) -> CmdResult<()> {
     let state = app.state::<AppState>();
     if state.session_running() {
         return Err("session-running".into());
@@ -432,7 +451,7 @@ pub fn logout(app: AppHandle) -> CmdResult<()> {
 }
 
 #[tauri::command]
-pub fn open_giveaway(app: AppHandle, code: String) -> CmdResult<()> {
+pub async fn open_giveaway(app: AppHandle, code: String) -> CmdResult<()> {
     let state = app.state::<AppState>();
     if state.session_running() {
         return Err("session-running".into());
@@ -445,7 +464,7 @@ pub fn open_giveaway(app: AppHandle, code: String) -> CmdResult<()> {
 }
 
 #[tauri::command]
-pub fn show_ig_window(app: AppHandle) -> bool {
+pub async fn show_ig_window(app: AppHandle) -> bool {
     match automation::ig_window(&app) {
         Some(window) => {
             let _ = window.show();

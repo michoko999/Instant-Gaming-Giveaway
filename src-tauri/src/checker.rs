@@ -19,8 +19,8 @@ const MARKERS: [(&str, &str, &str); 7] = [
     ("pl", "To giveaway zakończone", "Wygraj wybraną przez siebie grę"),
 ];
 
-/// Nombre de pages vérifiées en même temps.
-pub const CONCURRENCY: usize = 8;
+/// Nombre de pages vérifiées en même temps (volontairement modeste pour ne pas surcharger le site).
+pub const CONCURRENCY: usize = 4;
 
 pub fn giveaway_url(lang: &str, code: &str) -> String {
     format!("https://www.instant-gaming.com/{lang}/giveaway/{code}")
