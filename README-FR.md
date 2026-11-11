@@ -1,96 +1,109 @@
-# Outil de Giveaway Instant Gaming
+# Giveaway IG
 
-## 🛠️ Compilation en exécutable
-> [!NOTE]
-> Pour obtenir un format exécutable portable, l'application est empaquetée avec PyInstaller dans un fichier `EXE`. Certains moteurs antivirus (y compris Windows Defender) peuvent signaler l'exécutable empaqueté comme un cheval de Troie, car PyInstaller a déjà été utilisé par d'autres pour empaqueter du code Python malveillant. Ces alertes peuvent être ignorées sans danger. Si vous ne faites absolument pas confiance à l'exécutable, vous devrez installer Python vous-même et tout exécuter depuis le code source.
+<div align="center">
 
-> [!IMPORTANT]
-> L'exécutable sera créé pour votre plateforme actuelle :
-> - **Windows** : Crée `Giveaway_IG.exe` avec support d'icône
-> - **Linux/macOS** : Crée `Giveaway_IG` (sans extension) - l'icône et le fichier de version ne sont pas supportés sur ces plateformes
+<img src="Magic.ico" width="96" alt="" />
 
-Si vous souhaitez créer une version exécutable de l'application :lign="center">
+**Participe aux concours Instant Gaming sans y passer ta soirée.**
 
-📖 Ce README est disponible en :
-[<img src="https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg" height="15"> English](README.md) |
-[<img src="https://upload.wikimedia.org/wikipedia/en/c/c3/Flag_of_France.svg" height="15"> Français](README-FR.md)
+[English](README.md) · Français
 
 </div>
 
-## Présentation
-L'outil de Giveaway Instant Gaming est un script Python automatisé qui vous aide à participer aux concours Instant Gaming en vérifiant périodiquement la liste des concours disponibles. Parfait pour les joueurs qui veulent augmenter leurs chances de gagner des jeux !
+Giveaway IG est une application Windows **portable** (aucune installation) qui récupère les concours Instant Gaming encore ouverts, vérifie lesquels sont actifs et y participe pour toi, avec une interface « ciel étoilé ».
+
+> [!NOTE]
+> Projet open source, **non affilié à Instant Gaming**, sans lien d'affiliation ni de parrainage.
 
 ## ✨ Fonctionnalités
 
-- 🌐 **Prend en charge plusieurs langues**:
-  🇬🇧 English | 🇫🇷 Français | 🇪🇸 Español | 🇩🇪 Deutsch | 🇵🇹 Português | 🇮🇹 Italiano | 🇵🇱 Polski
-- ⚡ **Vérification asynchrone des concours** - Plus rapide que jamais !
-- 🎨 **Interface colorée** - Visuellement plus agréable et informative
-- 📊 **Barre de progression** - Suivez l'avancement du processus
-- ⏰ **Intervalles de vérification personnalisables**
-- 🔄 **Sauvegarde des préférences** - Configuration persistante
-- 📝 **Historique des participations** - Gardez une trace de vos concours
-- 💪 **Robuste** - Meilleure gestion des erreurs
-- ✅ **Validation intelligente des concours**:
-  - Détecte automatiquement les concours actifs
-  - Vérifie la disponibilité des concours
-  - Ignore les concours expirés ou invalides
+- **Mode automatique** : tu te connectes une seule fois à ton compte dans la fenêtre Instant Gaming intégrée. Ensuite, l'application ouvre chaque concours et clique sur « Participer » à ta place.
+  - Si le site demande une vérification humaine (captcha), le concours est mis de côté et tu le fais toi-même à la fin. **L'application ne résout ni ne contourne jamais de captcha.**
+  - Si ton compte est déconnecté, la session se met en pause le temps que tu te reconnectes.
+- **Mode manuel** : les concours s'ouvrent un par un ; tu cliques sur « Participer » et l'application passe au suivant dès qu'elle détecte ta participation.
+- **Listes toujours à jour** : deux listes communautaires intégrées, plus tes propres fichiers (CSV, TXT, JSON) ou listes en ligne.
+- **Vérification rapide** : des centaines de concours testés en parallèle en moins d'une minute.
+- **Historique et statistiques** : participations du jour, série de jours d'affilée, record, export CSV.
+- **7 langues** : français, English, Español, Deutsch, Português, Italiano, Polski.
+- **Portable** : tes réglages et ta session sont rangés dans un dossier `GiveawayIG-data` à côté de l'exécutable.
+- **Mises à jour** : l'application te prévient quand une nouvelle version sort (elle ne télécharge rien toute seule).
 
-## 📋 Prérequis
-- Python 3.8 ou supérieur
-- Navigateur web (Chrome recommandé)
-- Connexion internet
+## 📥 Télécharger
 
-## 📥 Installation
-1. Assurez-vous d'avoir Python installé sur votre ordinateur
-2. Exécutez `install library.bat` pour installer les dépendances requises
-3. Ou installez manuellement les dépendances avec : `pip install -r requirements.txt`
+1. Va sur la page [Releases](https://github.com/michoko999/Instant-Gaming-Giveaway/releases) et télécharge `GiveawayIG.exe`.
+2. Range-le dans un dossier à toi, par exemple `Documents\GiveawayIG`.
+3. Lance-le. Au premier démarrage, l'assistant te guide : connexion à ton compte, récupération des listes, choix du mode.
 
-## 🛠️ Compilation en exécutable
-> [!NOTE]
-> Pour obtenir un format exécutable portable, l’application est empaquetée avec PyInstaller dans un fichier `EXE`. Certains moteurs antivirus (y compris Windows Defender) peuvent signaler l’exécutable empaqueté comme un cheval de Troie, car PyInstaller a déjà été utilisé par d’autres pour empaqueter du code Python malveillant. Ces alertes peuvent être ignorées sans danger. Si vous ne faites absolument pas confiance à l’exécutable, vous devrez installer Python vous-même et tout exécuter depuis le code source.
+Prérequis : Windows 10 ou 11 avec Microsoft Edge WebView2 (déjà présent sur Windows 11 et sur Windows 10 à jour).
 
-Si vous souhaitez créer une version exécutable (.exe) de l'application :
+### Vérifier que le fichier est authentique
 
-1. Assurez-vous d'avoir PyInstaller installé :
-   ```
-   pip install pyinstaller
-   ```
+Chaque release affiche l'empreinte SHA-256 de l'exécutable et une **attestation de provenance** GitHub, qui prouve qu'il a été compilé par GitHub Actions à partir du code public de ce dépôt :
 
-2. Compilez l'application en utilisant :
-   ```
-   pyinstaller --onefile --icon=Magic.ico --name="Giveaway_IG" --add-data "config.ini;." --add-data "traduction.json;." --add-data "List-Uncheck.csv;." --version-file=file_version_info.txt giveaway_ig.py
-   ```
+```powershell
+Get-FileHash .\GiveawayIG.exe -Algorithm SHA256
+gh attestation verify .\GiveawayIG.exe --repo michoko999/Instant-Gaming-Giveaway
+```
 
-3. Trouvez l'exécutable compilé dans le dossier `dist`
+## 🛡️ Antivirus et « Windows a protégé votre ordinateur »
 
-## 🚀 Utilisation
-> [!NOTE]
-> Ce programme n’a aucun lien avec Instant Gaming et ne contient aucun lien d’affiliation. Je ne gagne rien grâce à lui, contrairement à d’autres outils ou listes de concours qui peuvent inclure des liens de parrainage.
+La version 2 a été pensée pour ne plus ressembler à un programme malveillant :
 
-1. Lancez le programme en utilisant `run.bat` ou en exécutant `python giveaway_ig.py`
-2. Sélectionnez votre langue préférée
-3. Choisissez un fichier CSV contenant les URLs des concours (par défaut : List-Uncheck.csv)
-4. Définissez l'intervalle de temps entre chaque URL
-5. Le programme ouvrira chaque URL de concours valide dans votre navigateur
-6. Cliquez sur le bouton orange "Participer" au centre de chaque page
+- un vrai exécutable natif (Rust + Tauri), qui **ne se décompresse pas** dans un dossier temporaire comme le faisait l'ancienne version PyInstaller ;
+- **aucune simulation de touches** ni écoute du clavier : les clics se font à l'intérieur de la fenêtre de l'application ;
+- aucune écriture dans `%TEMP%`, aucun démarrage automatique avec Windows, aucune modification du système.
 
-## 📁 Structure des fichiers
-- `giveaway_ig.py` : Fichier principal du programme
-- `traduction.json` : Contient les traductions pour plusieurs langues
-- `List-Uncheck.csv` : Liste par défaut des URLs à vérifier
-- `valid_urls.csv` : Liste des URLs de concours valides
-- `invalid_urls.csv` : Liste des URLs expirées ou invalides
-- `unknown_urls.csv` : Liste des URLs avec un statut inconnu
+Tant que l'exécutable n'est pas signé (demande de signature gratuite en cours auprès de SignPath Foundation, voir la [politique de signature](docs/CODE_SIGNING_POLICY.md)), Windows SmartScreen peut afficher « Windows a protégé votre ordinateur » pour une nouvelle version : c'est un avertissement de réputation, pas une détection de virus. Si tu as téléchargé le fichier depuis la page Releases et que l'empreinte correspond, clique sur « Informations complémentaires » puis « Exécuter quand même ».
 
-## ❓ Dépannage
-- Si vous rencontrez des problèmes avec le chargement des traductions, vérifiez le format JSON dans les fichiers de traduction
-- Assurez-vous que vos fichiers CSV sont correctement formatés avec une URL par ligne
-- Vérifiez que vous disposez d'une connexion internet stable
+Si un antivirus signale quand même l'application, merci d'ouvrir une [issue](https://github.com/michoko999/Instant-Gaming-Giveaway/issues) avec le nom de la détection : on la signalera comme faux positif à l'éditeur (pour Microsoft Defender : [portail de soumission](https://www.microsoft.com/wdsi/filesubmission)).
 
-## 📄 Licence
-Ce projet est sous licence MIT. Consultez le fichier LICENSE pour plus de détails.
+## ⚠️ À savoir avant d'utiliser le mode automatique
 
----
-Pour la version anglaise de cette documentation, cliquez sur le badge English en haut de ce document ou accédez à la [documentation en anglais (README.md)](README.md).
+Les règlements de concours interdisent souvent les participations faites par un « robot ». Utiliser le mode automatique peut donc entraîner l'annulation de participations, voire une sanction sur ton compte Instant Gaming. **C'est à toi de décider** ; en cas de doute, utilise le mode manuel.
 
+## 🔒 Confidentialité
+
+- Ton mot de passe est tapé directement sur le site d'Instant Gaming, dans la fenêtre intégrée. L'application ne le voit pas et ne le stocke pas.
+- La session (cookies) reste sur ton PC, dans `GiveawayIG-data\webview`. « Se déconnecter » dans les paramètres l'efface.
+- Aucune télémétrie. L'application se connecte uniquement à :
+  - `raw.githubusercontent.com` pour télécharger les listes de concours ;
+  - `instant-gaming.com` pour vérifier les concours et y participer ;
+  - `api.github.com` pour savoir si une nouvelle version existe (désactivable).
+
+## 🛠️ Compiler soi-même
+
+Prérequis : [Node.js 22](https://nodejs.org), [Rust](https://rustup.rs) stable et, sous Windows, les outils de compilation C++ de Visual Studio ([prérequis Tauri](https://tauri.app/start/prerequisites/)).
+
+```bash
+npm ci
+npm run tauri dev                 # lancer en développement
+npx tauri build --no-bundle       # exécutable : src-tauri/target/release/giveaway-ig.exe
+```
+
+Vérifications :
+
+```bash
+npm run check                                        # types TypeScript / Svelte
+cargo test --manifest-path src-tauri/Cargo.toml      # tests du cœur Rust
+```
+
+## 📁 Structure
+
+```
+src/                 Interface (Svelte 5 + TypeScript)
+  screens/           Écrans : assistant, accueil, session, récap, concours, historique, paramètres
+  lib/               Ciel étoilé, anneau, état global, traductions (lib/i18n)
+src-tauri/           Application Rust (Tauri 2)
+  src/sources.rs     Lecture des listes (JSON communautaire, CSV, imports)
+  src/checker.rs     Vérification des concours
+  src/automation.rs  Fenêtre Instant Gaming et script de participation
+  src/session.rs     Déroulement des sessions automatique et manuelle
+  src/store.rs       Stockage local, historique, statistiques
+scripts/             Préparation des icônes à partir de Magic.ico
+legacy/              Ancienne version Python (v1.3)
+List-Uncheck.csv     Liste communautaire de concours (utilisée par l'application)
+```
+
+## 📜 Licence
+
+[MIT](LICENSE) © 2023-2026 Michoko.

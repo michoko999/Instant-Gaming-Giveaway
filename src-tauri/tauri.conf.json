@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Giveaway IG",
+  "version": "2.0.0",
+  "identifier": "net.michoko.giveawayig",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [],
+    "withGlobalTauri": false,
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": false,
+    "targets": "all",
+    "publisher": "Michoko",
+    "copyright": "© 2023-2026 Michoko. Projet open source non affilié à Instant Gaming.",
+    "shortDescription": "Participe aux concours Instant Gaming",
+    "longDescription": "Giveaway IG récupère les concours Instant Gaming actifs, vérifie lesquels sont encore ouverts et t'aide à y participer.",
+    "icon": ["icons/icon.ico", "icons/icon.png"]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissions de la fenêtre principale uniquement. La fenêtre Instant Gaming n'a accès à aucune commande.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
