@@ -1,91 +1,264 @@
-# Instant Gaming Giveaway Tool
-
 <div align="center">
 
-📖 This README is available in:
-[<img src="https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg" height="15"> English](README.md) |
-[<img src="https://upload.wikimedia.org/wikipedia/en/c/c3/Flag_of_France.svg" height="15"> Français](README-FR.md)
+<img src="docs/images/logo.png" width="104" alt="Giveaway IG logo" />
+
+# Giveaway IG
+
+**Enter Instant Gaming giveaways without spending your evening on it.**
+
+<a href="https://github.com/michoko999/Instant-Gaming-Giveaway/releases/latest"><img src="https://img.shields.io/github/v/release/michoko999/Instant-Gaming-Giveaway?style=flat-square&label=version&color=FFD27A&labelColor=1E2140" alt="Latest version" /></a>
+<img src="https://img.shields.io/badge/Windows-10%20%7C%2011-B9A6FF?style=flat-square&labelColor=1E2140" alt="Windows 10 and 11" />
+<img src="https://img.shields.io/badge/languages-7-9FE8D5?style=flat-square&labelColor=1E2140" alt="7 languages" />
+<a href="LICENSE"><img src="https://img.shields.io/github/license/michoko999/Instant-Gaming-Giveaway?style=flat-square&color=FFB199&labelColor=1E2140" alt="MIT license" /></a>
+
+**English** · [Français](README-FR.md) · [Español](README-ES.md) · [Deutsch](README-DE.md) · [Português](README-PT.md) · [Italiano](README-IT.md) · [Polski](README-PL.md)
+
+<br />
+
+<a href="https://github.com/michoko999/Instant-Gaming-Giveaway/releases/latest"><img src="https://img.shields.io/badge/%E2%AC%87%20Download-GiveawayIG.exe-FFD27A?style=for-the-badge&labelColor=2A2D5A" alt="Download GiveawayIG.exe" /></a>
+
+<sub>Portable · no installation · free and open source</sub>
+
+<br /><br />
+
+<img src="docs/images/screenshots/en-home.png" width="880" alt="Giveaway IG home screen: number of giveaways waiting, start buttons and this month's progress" />
 
 </div>
 
-## Overview
-The Instant Gaming Giveaway Tool is an automated Python script that helps you participate in Instant Gaming contests by periodically checking the list of available giveaways. Perfect for gamers who want to increase their chances of winning games!
+<br />
+
+Giveaway IG fetches the Instant Gaming giveaways that are still open, checks which ones are active and enters them for you, one page after another, in a starry-night interface. You sign in once; after that, a click on **Start automatic** is all it takes each month.
+
+> [!NOTE]
+> Open source project, **not affiliated with Instant Gaming**, with no affiliate or referral links.
 
 ## ✨ Features
 
-- 🌐 **Multi-language Support**:
-  🇬🇧 English | 🇫🇷 Français | 🇪🇸 Español | 🇩🇪 Deutsch | 🇵🇹 Português | 🇮🇹 Italiano | 🇵🇱 Polski
-- ⚡ **Asynchronous Contest Verification** - Faster than ever!
-- 🎨 **Colorful Interface** - Visually pleasing and informative
-- 📊 **Progress Bar** - Track the process advancement
-- ⏰ **Customizable Check Intervals**
-- 🔄 **Preference Saving** - Persistent configuration
-- 📝 **Participation History** - Keep track of your contests
-- ✅ **Intelligent Contest Validation**:
-  - Automatically detects active contests
-  - Checks contest availability
-  - Ignores expired or invalid contests
+<table>
+<tr>
+<td width="50%" valign="top">
 
-## 📋 Requirements
-- Python 3.8 or higher
-- Web browser
-- Internet connection
+### 🤖 Automatic mode
+Sign in once in the built-in Instant Gaming window. The app opens each giveaway and clicks “Participate” for you, in a hidden window: **Watch the page live** shows it whenever you want.
 
-## 📥 Installation
-1. Make sure you have Python installed on your computer
-2. Run `install library.bat` to install the required dependencies
-3. Or manually install dependencies with: `pip install -r requirements.txt`
+</td>
+<td width="50%" valign="top">
 
-## 🛠️ Compiling to Executable
-> [!NOTE]
-> To achieve a portable-executable format, the application is packaged with PyInstaller into an `EXE`. Some antivirus engines (including Windows Defender) might report the packaged executable as a trojan, because PyInstaller has been used by others to package malicious Python code in the past. These reports can be safely ignored. If you absolutely do not trust the executable, you'll have to install Python yourself and run everything from source.
+### 🖐️ Manual mode
+Giveaways open one by one. You click “Participate” and the app moves on as soon as it notices. Handy if you prefer to stay in control.
 
-> [!IMPORTANT]
-> The executable will be created for your current platform:
-> - **Windows**: Creates `Giveaway_IG.exe` with icon support
-> - **Linux/macOS**: Creates `Giveaway_IG` (without extension) - icon and version file are not supported on these platforms
+</td>
+</tr>
+<tr>
+<td valign="top">
 
-If you want to create an executable version of the application:
+### 🛡️ Careful mode
+On by default: at least 8 s between giveaways, a limited number per session, and an immediate stop if the site shows a warning. Captchas are left to you, **never solved or bypassed**.
 
-1. Make sure you have PyInstaller installed:
-   ```
-   pip install pyinstaller
-   ```
+</td>
+<td valign="top">
 
-2. Compile the application using:
-   ```
-   pyinstaller --onefile --icon=Magic.ico --name="Giveaway_IG" --add-data "config.ini;." --add-data "traduction.json;." --add-data "List-Uncheck.csv;." --version-file=file_version_info.txt giveaway_ig.py
-   ```
+### 📚 Lists that stay up to date
+Two community lists and two sites that share giveaways (jv-actu.com, ledemondujeu.com) are built in. Add your own: **Paste links**, a file, an online list or any web page.
 
-3. Find the compiled executable in the `dist` folder
+</td>
+</tr>
+<tr>
+<td valign="top">
 
-## 🚀 Usage
-> [!NOTE]
-> This program has no affiliation with Instant Gaming and contains no affiliate links. I do not earn anything from it, unlike other tools or contest lists that may include referral links.
+### 📅 Your month at a glance
+Instant Gaming accepts one entry per giveaway per month: the app skips the ones already done, keeps a history with a chart per month and exports it as CSV.
 
-1. Run the program using `run.bat` or by executing `python giveaway_ig.py`
-2. Select your preferred language
-3. Choose a CSV file containing the giveaway URLs (default: List-Uncheck.csv)
-4. Set the time interval between each URL
-5. The program will open each valid giveaway URL in your browser
-6. Click on the orange "Participate" button in the center of each page
+</td>
+<td valign="top">
 
-## 📁 File Structure
-- `giveaway_ig.py`: Main program file
-- `traduction.json`: Contains translations for multiple languages
-- `List-Uncheck.csv`: Default list of URLs to check. Some contests may be sourced from [this contest list](https://github.com/enzomtpYT/InstantGamingGiveawayList).
-- `valid_urls.csv`: List of valid giveaway URLs
-- `invalid_urls.csv`: List of expired or invalid URLs
-- `unknown_urls.csv`: List of URLs with unknown status
+### ♻️ Nothing is ever lost
+Ended giveaways stay in the list and are re-checked every week. If one comes back, it is picked up automatically.
 
-## ❓ Troubleshooting
-- If you encounter any issues with loading translations, check the JSON format in the translation files
-- Make sure your CSV files are properly formatted with one URL per line
-- Ensure you have a stable internet connection
+</td>
+</tr>
+<tr>
+<td valign="top">
 
-## 📄 License
-This project is licensed under the MIT License. See the LICENSE file for details.
+### 🚀 One-click updates
+When a new version is out, **Update** downloads it from this repository's releases, checks its SHA-256 fingerprint and restarts. Nothing happens without your click.
+
+</td>
+<td valign="top">
+
+### 💼 Portable, in 7 languages
+No installation: everything is stored in a `GiveawayIG-data` folder next to the executable. Français, English, Español, Deutsch, Português, Italiano, Polski.
+
+</td>
+</tr>
+</table>
+
+## 📸 Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/screenshots/en-giveaways.png" alt="Giveaways screen: list with status, search and filters" /></td>
+<td width="50%"><img src="docs/images/screenshots/en-history.png" alt="History screen: entries per month chart and log" /></td>
+</tr>
+<tr>
+<td align="center"><sub><b>Giveaways</b>: every known giveaway, its status and your last entry</sub></td>
+<td align="center"><sub><b>History</b>: entries per month and full log</sub></td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/images/screenshots/en-settings.png" alt="Settings screen: language, colors, session, giveaway sources" /></td>
+</tr>
+<tr>
+<td colspan="2" align="center"><sub><b>Settings</b>: language, accent color, session pace, careful mode, sources</sub></td>
+</tr>
+</table>
+
+## 🚀 Getting started
+
+1. **Download** `GiveawayIG.exe` from the [Releases](https://github.com/michoko999/Instant-Gaming-Giveaway/releases/latest) page.
+2. **Put it in a folder of your own**, for example `Documents\GiveawayIG`. Your settings will be saved next to it.
+3. **Run it.** A short wizard guides you:
+   - **Connect my account**: the Instant Gaming site opens in the app; sign in as usual (your password is typed on their site, never in the app);
+   - the app fetches the lists and checks which giveaways are open;
+   - choose your mode and your pace.
+4. Click **Start automatic** (or **Manual mode**) and let it run. Come back next month 🌙
+
+Requirements: Windows 10 or 11 with Microsoft Edge WebView2 (built into Windows 11 and up-to-date Windows 10).
+
+## ⚠️ Before using automatic mode
+
+Giveaway rules often forbid entries made by “bots”. Automatic mode may therefore get entries cancelled or even your Instant Gaming account sanctioned. **It is your call**; if in doubt, use manual mode.
+
+**Careful mode** (Settings → *Careful mode (recommended)*) lowers the risk without removing it:
+
+- at least 8 seconds between giveaways, and a limited number of giveaways per session (40 by default);
+- the session stops right away if the site shows a warning or asks for several human verifications, and after several errors in a row;
+- giveaways already entered this month are not reopened;
+- list checks run without your account, at a moderate pace.
+
+The app does not try to pass itself off as a human: no fake mouse movements, no captcha solving.
+
+## 🛡️ Antivirus and “Windows protected your PC”
+
+Version 2 was rebuilt so it no longer looks like malware:
+
+- a real native executable (Rust + Tauri) that **does not unpack itself** into a temporary folder like the old PyInstaller build did;
+- **no simulated keystrokes** and no keyboard hooks: clicks happen inside the app's own window;
+- no writes to `%TEMP%`, no auto-start with Windows, no system changes.
+
+Until the executable is signed (a free code-signing request to SignPath Foundation is planned, see the [code signing policy](docs/CODE_SIGNING_POLICY.md)), Windows SmartScreen may show “Windows protected your PC” for a new version. It is a reputation warning, not a virus detection: if the file comes from the Releases page and its fingerprint matches, click **More info** then **Run anyway**.
+
+<details>
+<summary><b>Check that the file is genuine</b></summary>
+<br />
+
+Each release shows the SHA-256 fingerprint of the executable and a GitHub **build provenance attestation** proving it was built by GitHub Actions from this repository's public code:
+
+```powershell
+Get-FileHash .\GiveawayIG.exe -Algorithm SHA256
+gh attestation verify .\GiveawayIG.exe --repo michoko999/Instant-Gaming-Giveaway
+```
+
+</details>
+
+If an antivirus still flags the app, please open an [issue](https://github.com/michoko999/Instant-Gaming-Giveaway/issues) with the detection name so it can be reported as a false positive (Microsoft Defender: [submission portal](https://www.microsoft.com/wdsi/filesubmission)).
+
+## 🔒 Privacy
+
+- You type your password on the Instant Gaming site, inside the built-in window. The app never sees or stores it.
+- The session (cookies) stays on your PC in `GiveawayIG-data\webview`. **Sign out** in Settings clears it.
+- No telemetry, no account, no ads. The app only connects to:
+
+| Address | Why |
+|:--|:--|
+| `instant-gaming.com` | check and enter giveaways |
+| `raw.githubusercontent.com`, `jv-actu.com`, `ledemondujeu.com` | download the giveaway lists (each source can be turned off) |
+| `api.github.com`, `github.com` | see whether a new version exists and download it (can be turned off) |
+
+## ❓ FAQ
+
+<details>
+<summary><b>Why can I only enter once a month?</b></summary>
+<br />
+That is Instant Gaming's rule: one entry per giveaway per month. The app keeps track and only reopens a giveaway in the following month.
+</details>
+
+<details>
+<summary><b>How do I add giveaways that are not in the lists?</b></summary>
+<br />
+In <b>Giveaways</b>, click <b>Paste links</b> and paste Instant Gaming links or codes (any surrounding text is ignored). You can also import a file or add an online list or a web page in <b>Settings → Giveaway sources</b>. To share them with everyone, open an <a href="https://github.com/michoko999/Instant-Gaming-Giveaway/issues">issue</a> and they will be added to the community list.
+</details>
+
+<details>
+<summary><b>What happens when a verification (captcha) appears?</b></summary>
+<br />
+The giveaway is set aside and the session continues. At the end, the summary lists the giveaways to finish by hand, with a button to open each page.
+</details>
+
+<details>
+<summary><b>Where are my settings stored? How do I start over?</b></summary>
+<br />
+In the <code>GiveawayIG-data</code> folder next to <code>GiveawayIG.exe</code> (or in your Windows user folder if that location is read-only). To move the app, move both together. To start from scratch, close the app and delete that folder.
+</details>
+
+<details>
+<summary><b>How do I update?</b></summary>
+<br />
+When a new version is published, a banner appears at the top of the app: click <b>Update</b>. You can also download the new <code>GiveawayIG.exe</code> by hand and replace the old one. Your data stays in place either way.
+</details>
+
+<details>
+<summary><b>Where is the old Python version?</b></summary>
+<br />
+In the <a href="legacy/">legacy</a> folder. It is no longer maintained.
+</details>
+
+## 🤝 Contributing
+
+- **Giveaways**: send new codes through an [issue](https://github.com/michoko999/Instant-Gaming-Giveaway/issues) or a pull request on [`List-Uncheck.csv`](List-Uncheck.csv). Codes are never removed from it, so a giveaway that comes back is picked up again.
+- **Translations**: the texts live in [`src/lib/i18n`](src/lib/i18n), one file per language.
+- **Bugs and ideas**: [issues](https://github.com/michoko999/Instant-Gaming-Giveaway/issues) are welcome.
+
+## 🛠️ Build from source
+
+Requirements: [Node.js 22](https://nodejs.org), stable [Rust](https://rustup.rs) and, on Windows, the Visual Studio C++ build tools ([Tauri prerequisites](https://tauri.app/start/prerequisites/)).
+
+```bash
+npm ci
+npm run tauri dev                 # run in development
+npx tauri build --no-bundle       # executable: src-tauri/target/release/giveaway-ig.exe
+```
+
+```bash
+npm run check                                        # TypeScript / Svelte types
+cargo test --manifest-path src-tauri/Cargo.toml      # Rust core tests
+```
+
+<details>
+<summary><b>Project layout</b></summary>
+
+```
+src/                 Interface (Svelte 5 + TypeScript)
+  screens/           Screens: wizard, home, session, recap, giveaways, history, settings
+  lib/               Starry sky, ring, chart, global state, translations (lib/i18n)
+src-tauri/           Rust application (Tauri 2)
+  src/sources.rs     Lists: community JSON, CSV, web pages, pasted links
+  src/checker.rs     Giveaway status checks
+  src/automation.rs  Instant Gaming window and entry script
+  src/session.rs     Automatic and manual sessions, careful mode
+  src/store.rs       Local storage, history, statistics
+  src/update.rs      Update check and installation
+scripts/             Icon preparation from Magic.ico
+docs/                Code signing policy, README images
+legacy/              Previous Python version (v1.3)
+List-Uncheck.csv     Community giveaway list (used by the app)
+```
+
+</details>
 
 ---
-For additional information or support in French, click on the French badge at the top of this document or access the [French documentation (README-FR.md)](README-FR.md).
 
+<div align="center">
+
+<sub>[MIT](LICENSE) © 2023-2026 Michoko · Instant Gaming is a trademark of its owner; this project is not affiliated with it.</sub>
+
+</div>

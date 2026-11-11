@@ -1,66 +1,41 @@
-# === Fichiers de données et config ===
-valid_urls.csv
-invalid_urls.csv
-unknown_urls.csv
-giveaway_log.txt
-history.json
+# === Giveaway IG v2 (Tauri + Svelte) ===
+node_modules/
+/dist/
+/src-tauri/target/
+/src-tauri/gen/
+/src-tauri/icons/
+/public/panda.png
+GiveawayIG-data/
 
-# === Fichiers de build et cache Python ===
+# === Ancienne version Python (legacy/) ===
+legacy/valid_urls.csv
+legacy/invalid_urls.csv
+legacy/unknown_urls.csv
+legacy/giveaway_log.txt
+legacy/history.json
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+/legacy/build/
+/legacy/dist/
+*.spec
 
 # === Environnements et IDE ===
 .env
 .venv
-env/
 venv/
-ENV/
-env.bak/
-venv.bak/
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# === OS et fichiers système ===
+# === OS ===
 .DS_Store
 Thumbs.db
 desktop.ini
-.Trash-*
 
-# === Logs et rapports ===
+# === Logs et temporaires ===
 *.log
-*.out
-*.err
-logs/
-reports/
-pylint_report.txt
-flake8_report.txt
-bandit_report.json
-safety_report.json
-performance_report.txt
-
-# === Fichiers temporaires ===
 *.tmp
 *.temp
-temp/
 tmp/

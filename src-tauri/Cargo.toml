@@ -1,0 +1,32 @@
+[package]
+name = "giveaway-ig"
+version = "2.0.0"
+description = "Giveaway IG - participe aux concours Instant Gaming"
+authors = ["Michoko"]
+license = "MIT"
+repository = "https://github.com/michoko999/Instant-Gaming-Giveaway"
+edition = "2021"
+rust-version = "1.80"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "brotli"] }
+tokio = { version = "1", features = ["sync", "time", "macros"] }
+futures = "0.3"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+url = "2"
+sha2 = "0.10"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
