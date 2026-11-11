@@ -1,10 +1,18 @@
 name: Release
 
-# Publie un brouillon de release quand un tag v2.x.y est poussé.
-# Le brouillon permet de vérifier (et plus tard de signer) l'exécutable avant de le rendre public.
+# Deux façons de publier une version :
+# - « Run workflow » dans l'onglet Actions (branche main) : compile, crée le tag vX.Y.Z à partir de la
+#   version de package.json et publie la release (case « brouillon » pour la relire avant) ;
+# - pousser un tag v2.x.y : crée un brouillon de release (à relire, et plus tard à signer).
 on:
   push:
     tags: ['v2.*']
+  workflow_dispatch:
+    inputs:
+      draft:
+        description: "Créer un brouillon au lieu de publier tout de suite"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -14,6 +22,8 @@ permissions:
 jobs:
   release:
     name: Release Windows
+    # Lancement manuel : uniquement depuis main.
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -25,13 +35,29 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Le tag correspond à la version de l'application
+      - name: Version de l'application
+        id: version
         shell: bash
         run: |
           app="v$(node -p "require('./package.json').version")"
           conf="v$(node -p "require('./src-tauri/tauri.conf.json').version")"
-          echo "tag=${GITHUB_REF_NAME} package.json=${app} tauri.conf.json=${conf}"
-          test "$app" = "$GITHUB_REF_NAME" && test "$conf" = "$GITHUB_REF_NAME"
+          echo "package.json=${app} tauri.conf.json=${conf} ref=${GITHUB_REF_NAME}"
+          test "$app" = "$conf"
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            test "$app" = "$GITHUB_REF_NAME"
+          fi
+          echo "tag=${app}" >> "$GITHUB_OUTPUT"
+
+      - name: Aucune release existante pour cette version
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ steps.version.outputs.tag }}" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::error::La release ${{ steps.version.outputs.tag }} existe déjà : change la version dans package.json, tauri.conf.json et Cargo.toml."
+            exit 1
+          fi
 
       - run: npm ci
 
@@ -55,21 +81,29 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          draft: true
-          name: Giveaway IG ${{ github.ref_name }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          draft: ${{ github.event_name == 'push' || inputs.draft }}
+          make_latest: ${{ github.event_name == 'workflow_dispatch' && !inputs.draft }}
+          name: Giveaway IG ${{ steps.version.outputs.tag }}
           files: |
             out/GiveawayIG.exe
             out/SHA256SUMS.txt
           body: |
-            ## Giveaway IG ${{ github.ref_name }}
+            ## Giveaway IG ${{ steps.version.outputs.tag }}
 
             **Télécharge `GiveawayIG.exe`** : c'est une application portable, sans installation.
             Range-la dans un dossier à toi (par exemple `Documents\GiveawayIG`) : tes réglages seront enregistrés à côté, dans `GiveawayIG-data`.
 
-            ### Vérifier le fichier
+            **Download `GiveawayIG.exe`**: it is a portable app, no installation needed.
+            Put it in a folder of your own (for example `Documents\GiveawayIG`): your settings are saved next to it, in `GiveawayIG-data`.
+
+            ### Vérifier le fichier · Check the file
             - SHA-256 : `${{ steps.hash.outputs.sha256 }}`
             - Provenance : `gh attestation verify GiveawayIG.exe --repo ${{ github.repository }}`
 
-            Prérequis : Windows 10 ou 11 avec Microsoft Edge WebView2 (déjà présent sur Windows 11 et sur Windows 10 à jour).
+            Windows 10 / 11 + Microsoft Edge WebView2 (déjà présent sur Windows 11 et Windows 10 à jour · built into Windows 11 and up-to-date Windows 10).
 
-            Projet open source, non affilié à Instant Gaming.
+            Documentation : [README](https://github.com/${{ github.repository }}#readme) (7 langues · 7 languages).
+
+            Projet open source, non affilié à Instant Gaming · Open source project, not affiliated with Instant Gaming.
