@@ -79,7 +79,7 @@ jobs:
         with:
           subject-path: out/GiveawayIG.exe
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
