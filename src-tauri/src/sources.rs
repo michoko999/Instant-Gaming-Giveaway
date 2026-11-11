@@ -84,6 +84,56 @@ pub fn parse_list(text: &str) -> Vec<String> {
         .collect()
 }
 
+/// Cherche tous les liens vers des concours Instant Gaming dans une page web, y compris
+/// ceux cachés derrière une redirection (`…/visit?url=https://www.instant-gaming.com/…`,
+/// éventuellement encodée) ou échappés dans du JSON. Doublons retirés, ordre conservé.
+pub fn scan_page(text: &str) -> Vec<String> {
+    const HOST: &str = "instant-gaming.com/";
+    let decoded = text
+        .replace("%2F", "/")
+        .replace("%2f", "/")
+        .replace("\\/", "/");
+    let lower = decoded.to_ascii_lowercase();
+    let bytes = lower.as_bytes();
+    let mut seen = std::collections::HashSet::new();
+    let mut codes = Vec::new();
+    let mut from = 0;
+    while let Some(pos) = lower[from..].find(HOST) {
+        let start = from + pos;
+        from = start + HOST.len();
+        // « www.instant-gaming.com » ou « //instant-gaming.com », pas « autreinstant-gaming.com ».
+        if start > 0 {
+            let before = bytes[start - 1];
+            if before.is_ascii_alphanumeric() || before == b'-' {
+                continue;
+            }
+        }
+        let mut rest = &lower[from..];
+        // Préfixe de langue facultatif : « fr/ », « en/ »…
+        if let Some(slash) = rest.find('/') {
+            if (2..=5).contains(&slash)
+                && rest[..slash]
+                    .bytes()
+                    .all(|b| b.is_ascii_alphabetic() || b == b'-')
+            {
+                rest = &rest[slash + 1..];
+            }
+        }
+        if !rest.starts_with("giveaway/") {
+            continue;
+        }
+        let offset = decoded.len() - rest.len() + "giveaway/".len();
+        let code: String = decoded[offset..]
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
+            .collect();
+        if !code.is_empty() && code.len() <= 64 && seen.insert(code.to_ascii_uppercase()) {
+            codes.push(code);
+        }
+    }
+    codes
+}
+
 /// Lit le JSON communautaire { "alive": [...], "dead": [...] }.
 pub fn parse_alive_json(text: &str) -> Result<(Vec<String>, Vec<String>), String> {
     let value: serde_json::Value =
@@ -134,6 +184,7 @@ pub async fn fetch_all(client: &Client, sources: &[Source]) -> FetchOutcome {
         let parsed = text.and_then(|t| match source.kind {
             SourceKind::AliveJson => parse_alive_json(&t),
             SourceKind::Csv => Ok((parse_list(&t), Vec::new())),
+            SourceKind::Page => Ok((scan_page(&t), Vec::new())),
         });
         match parsed {
             Ok((alive, dead)) => {
@@ -170,17 +221,28 @@ pub async fn fetch_all(client: &Client, sources: &[Source]) -> FetchOutcome {
     outcome
 }
 
-/// Devine le type d'une source ajoutée par l'utilisateur à partir de son URL.
+/// Devine le type d'une source ajoutée par l'utilisateur à partir de son URL :
+/// JSON communautaire, fichier liste (CSV, texte, GitHub brut) ou page web.
 pub fn guess_kind(url: &str) -> SourceKind {
-    let path = url
-        .split(['?', '#'])
-        .next()
-        .unwrap_or(url)
-        .to_ascii_lowercase();
+    let lower = url.to_ascii_lowercase();
+    let path = lower.split(['?', '#']).next().unwrap_or(&lower);
+    let raw_host = [
+        "://raw.githubusercontent.com/",
+        "://gist.githubusercontent.com/",
+        "://pastebin.com/raw/",
+    ]
+    .iter()
+    .any(|h| path.contains(h));
     if path.ends_with(".json") {
         SourceKind::AliveJson
-    } else {
+    } else if raw_host
+        || [".csv", ".txt", ".tsv"]
+            .iter()
+            .any(|ext| path.ends_with(ext))
+    {
         SourceKind::Csv
+    } else {
+        SourceKind::Page
     }
 }
 
@@ -237,5 +299,47 @@ mod tests {
     fn guesses_source_kind() {
         assert_eq!(guess_kind("https://x.org/list.json"), SourceKind::AliveJson);
         assert_eq!(guess_kind("https://x.org/list.csv?raw=1"), SourceKind::Csv);
+        assert_eq!(
+            guess_kind("https://raw.githubusercontent.com/a/b/main/list"),
+            SourceKind::Csv
+        );
+        assert_eq!(
+            guess_kind("https://jv-actu.com/gagner-un-jeu-gratuit-par-mois/"),
+            SourceKind::Page
+        );
+        assert_eq!(
+            guess_kind("https://www.ledemondujeu.com/jeux-concours-instant-gaming.com.html"),
+            SourceKind::Page
+        );
+    }
+
+    #[test]
+    fn scans_giveaway_links_in_pages() {
+        let html = r#"
+            <a href="https://www.instant-gaming.com/fr/giveaway/RATSUPER?igr=me5rine-lab"><img></a>
+            <a href="https://www.instant-gaming.com/fr/giveaway/me5rine-lab">x</a>
+            <p>https://www.instant-gaming.com/it/giveaway/VELOX et https://www.instant-gaming.com/fr/giveaway/TOMBIE#</p>
+            <a href="http://ledemondujeu.digidip.net/visit?url=https://www.instant-gaming.com/fr/giveaway/supremeleader?win=MTA=&amp;utm_source=x">gagnants</a>
+            <a href="https://t.example/?u=https%3A%2F%2Fwww.instant-gaming.com%2Fen%2Fgiveaway%2FENCODED">y</a>
+            <script>{"u":"https:\/\/www.instant-gaming.com\/de\/giveaway\/JSONCODE"}</script>
+            https://www.instant-gaming.com/fr/giveaway/ratsuper (doublon)
+            https://www.instant-gaming.com/giveaway/NOLANG
+            https://www.instant-gaming.com/fr/giveaways/ https://www.instant-gaming.com/fr/
+            https://fakeinstant-gaming.com/fr/giveaway/EVIL https://instant-gaming.com.evil.org/fr/giveaway/EVIL2
+        "#;
+        assert_eq!(
+            scan_page(html),
+            vec![
+                "RATSUPER",
+                "me5rine-lab",
+                "VELOX",
+                "TOMBIE",
+                "supremeleader",
+                "ENCODED",
+                "JSONCODE",
+                "NOLANG"
+            ]
+        );
+        assert!(scan_page("<html>rien ici</html>").is_empty());
     }
 }

@@ -71,6 +71,8 @@ pub enum SourceKind {
     AliveJson,
     /// Liste d'URL ou de codes, une par ligne (CSV ou texte).
     Csv,
+    /// Page web : tous les liens vers des concours Instant Gaming qu'elle contient.
+    Page,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,6 +102,22 @@ pub fn builtin_sources() -> Vec<Source> {
             name: "michoko999/Instant-Gaming-Giveaway".into(),
             url: "https://raw.githubusercontent.com/michoko999/Instant-Gaming-Giveaway/refs/heads/main/List-Uncheck.csv".into(),
             kind: SourceKind::Csv,
+            enabled: true,
+            builtin: true,
+        },
+        Source {
+            id: "jv-actu".into(),
+            name: "jv-actu.com".into(),
+            url: "https://jv-actu.com/gagner-un-jeu-gratuit-par-mois/".into(),
+            kind: SourceKind::Page,
+            enabled: true,
+            builtin: true,
+        },
+        Source {
+            id: "ledemondujeu".into(),
+            name: "ledemondujeu.com".into(),
+            url: "https://www.ledemondujeu.com/jeux-concours-instant-gaming.com.html".into(),
+            kind: SourceKind::Page,
             enabled: true,
             builtin: true,
         },
@@ -169,20 +187,28 @@ impl Settings {
         if !is_hex_color(&self.accent) {
             self.accent = DEFAULT_ACCENT.into();
         }
-        // Les sources intégrées sont toujours présentes (mais peuvent être désactivées).
-        for builtin in builtin_sources() {
-            match self.sources.iter_mut().find(|s| s.id == builtin.id) {
-                Some(existing) => {
-                    let enabled = existing.enabled;
-                    *existing = Source { enabled, ..builtin };
-                }
-                None => self.sources.insert(0, builtin),
-            }
+        // Les sources intégrées sont toujours présentes, en tête et dans leur ordre
+        // (mais peuvent être désactivées) ; viennent ensuite les sources ajoutées.
+        let mut rest = std::mem::take(&mut self.sources);
+        let builtins = builtin_sources();
+        for builtin in &builtins {
+            let enabled = rest
+                .iter()
+                .find(|s| s.id == builtin.id)
+                .map_or(builtin.enabled, |s| s.enabled);
+            self.sources.push(Source {
+                enabled,
+                ..builtin.clone()
+            });
         }
-        self.sources
-            .retain(|s| s.builtin || s.url.starts_with("https://"));
+        rest.retain(|s| {
+            !s.builtin
+                && s.url.starts_with("https://")
+                && !builtins.iter().any(|b| b.id == s.id || b.url == s.url)
+        });
         let mut seen = std::collections::HashSet::new();
-        self.sources.retain(|s| seen.insert(s.id.clone()));
+        rest.retain(|s| seen.insert(s.id.clone()));
+        self.sources.extend(rest);
     }
 }
 
@@ -300,6 +326,43 @@ mod tests {
         };
         settings.sanitize();
         assert_eq!(settings.seconds_per_giveaway, SAFE_MIN_DELAY);
+    }
+
+    #[test]
+    fn builtin_sources_stay_first_and_keep_their_switch() {
+        let custom = Source {
+            id: "custom-1".into(),
+            name: "Ma liste".into(),
+            url: "https://example.org/list.csv".into(),
+            kind: SourceKind::Csv,
+            enabled: true,
+            builtin: false,
+        };
+        let mut old_builtin = builtin_sources()[1].clone();
+        old_builtin.enabled = false;
+        let duplicate = Source {
+            id: "custom-2".into(),
+            builtin: false,
+            ..builtin_sources()[2].clone()
+        };
+        let mut settings = Settings {
+            sources: vec![custom.clone(), old_builtin, duplicate],
+            ..Settings::default()
+        };
+        settings.sanitize();
+        let ids: Vec<&str> = settings.sources.iter().map(|s| s.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "enzomtpyt",
+                "michoko999",
+                "jv-actu",
+                "ledemondujeu",
+                "custom-1"
+            ]
+        );
+        assert!(!settings.sources[1].enabled);
+        assert!(settings.sources[2].enabled);
     }
 
     #[test]

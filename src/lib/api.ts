@@ -11,7 +11,7 @@ export interface Source {
   id: string;
   name: string;
   url: string;
-  kind: 'aliveJson' | 'csv';
+  kind: 'aliveJson' | 'csv' | 'page';
   enabled: boolean;
   builtin: boolean;
 }
