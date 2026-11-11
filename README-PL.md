@@ -7,7 +7,7 @@
 **Bierz udział w giveawayach Instant Gaming, nie tracąc na to całego wieczoru.**
 
 <a href="https://github.com/michoko999/Instant-Gaming-Giveaway/releases/latest"><img src="https://img.shields.io/github/v/release/michoko999/Instant-Gaming-Giveaway?style=flat-square&label=wersja&color=FFD27A&labelColor=1E2140" alt="Najnowsza wersja" /></a>
-<img src="https://img.shields.io/badge/Windows-10%20%7C%2011-B9A6FF?style=flat-square&labelColor=1E2140" alt="Windows 10 i 11" />
+<img src="https://img.shields.io/badge/Windows%20%C2%B7%20Linux-portable-B9A6FF?style=flat-square&labelColor=1E2140" alt="Windows i Linux" />
 <img src="https://img.shields.io/badge/j%C4%99zyki-7-9FE8D5?style=flat-square&labelColor=1E2140" alt="7 języków" />
 <a href="LICENSE"><img src="https://img.shields.io/github/license/michoko999/Instant-Gaming-Giveaway?style=flat-square&label=licencja&color=FFB199&labelColor=1E2140" alt="Licencja MIT" /></a>
 
@@ -117,7 +117,7 @@ Bez instalacji: wszystko jest zapisywane w folderze `GiveawayIG-data` obok pliku
 
 ## 🚀 Pierwsze kroki
 
-1. **Pobierz** `GiveawayIG.exe` ze strony [Releases](https://github.com/michoko999/Instant-Gaming-Giveaway/releases/latest).
+1. **Pobierz** `GiveawayIG.exe` (Windows) albo `GiveawayIG-x86_64.AppImage` (Linux) ze strony [Releases](https://github.com/michoko999/Instant-Gaming-Giveaway/releases/latest).
 2. **Umieść go we własnym folderze**, na przykład `Dokumenty\GiveawayIG`. Twoje ustawienia zostaną zapisane obok.
 3. **Uruchom go.** Krótki kreator poprowadzi cię krok po kroku:
    - **Połącz moje konto**: strona Instant Gaming otwiera się w aplikacji; zaloguj się jak zwykle (hasło wpisujesz na ich stronie, nigdy w aplikacji);
@@ -125,7 +125,7 @@ Bez instalacji: wszystko jest zapisywane w folderze `GiveawayIG-data` obok pliku
    - wybierz tryb i tempo.
 4. Kliknij **Start automatyczny** (albo **Tryb ręczny**) i pozwól jej działać. Wróć w przyszłym miesiącu 🌙
 
-Wymagania: Windows 10 lub 11 z Microsoft Edge WebView2 (wbudowany w Windows 11 i aktualny Windows 10).
+Wymagania: Windows 10 lub 11 z Microsoft Edge WebView2 (wbudowany w Windows 11 i aktualny Windows 10). W Linuksie (x86_64) nadaj plikowi AppImage prawo wykonywania poleceniem `chmod +x GiveawayIG-x86_64.AppImage` i uruchom go: ustawienia również zapisują się obok.
 
 ## ⚠️ Zanim użyjesz trybu automatycznego
 

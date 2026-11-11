@@ -36,9 +36,8 @@ impl AppPaths {
     /// Dossier à côté de l'exécutable s'il est accessible en écriture (mode portable),
     /// sinon le dossier de données local de l'utilisateur.
     pub fn resolve(app: &AppHandle) -> AppPaths {
-        let portable_dir = std::env::current_exe()
-            .ok()
-            .and_then(|exe| exe.parent().map(|dir| dir.join(PORTABLE_DIR)))
+        let portable_dir = portable_base()
+            .map(|dir| dir.join(PORTABLE_DIR))
             .filter(|dir| is_writable_dir(dir));
         let (data, portable) = match portable_dir {
             Some(dir) => (dir, true),
@@ -111,6 +110,28 @@ impl AppPaths {
             }
         }
     }
+}
+
+/// Dossier de l'application portable : celui de l'exécutable, ou sous Linux celui du fichier
+/// `.AppImage` (l'AppImage s'exécute depuis un dossier temporaire en lecture seule et indique
+/// son vrai emplacement dans la variable `APPIMAGE`).
+fn portable_base() -> Option<PathBuf> {
+    portable_base_from(
+        std::env::var_os("APPIMAGE").map(PathBuf::from),
+        std::env::current_exe().ok(),
+    )
+}
+
+fn portable_base_from(appimage: Option<PathBuf>, exe: Option<PathBuf>) -> Option<PathBuf> {
+    if cfg!(target_os = "linux") {
+        if let Some(dir) = appimage
+            .filter(|p| p.is_absolute())
+            .and_then(|p| p.parent().map(Path::to_path_buf))
+        {
+            return Some(dir);
+        }
+    }
+    exe.and_then(|exe| exe.parent().map(Path::to_path_buf))
 }
 
 fn is_writable_dir(dir: &Path) -> bool {
@@ -192,5 +213,35 @@ impl AppState {
         if let Ok(mut guard) = self.ig_script.lock() {
             *guard = script;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn portable_folder_sits_next_to_the_app_file() {
+        let exe = Some(PathBuf::from("/tmp/.mount_GiveawXYZ/usr/bin/giveaway-ig"));
+        let appimage = Some(PathBuf::from("/home/me/Apps/GiveawayIG-x86_64.AppImage"));
+        let expected = if cfg!(target_os = "linux") {
+            PathBuf::from("/home/me/Apps")
+        } else {
+            PathBuf::from("/tmp/.mount_GiveawXYZ/usr/bin")
+        };
+        assert_eq!(portable_base_from(appimage, exe.clone()), Some(expected));
+        // Sans AppImage (exe Windows, binaire Linux) : à côté de l'exécutable.
+        assert_eq!(
+            portable_base_from(None, exe),
+            Some(PathBuf::from("/tmp/.mount_GiveawXYZ/usr/bin"))
+        );
+        // Chemin relatif ignoré.
+        assert_eq!(
+            portable_base_from(
+                Some(PathBuf::from("rel.AppImage")),
+                Some(PathBuf::from("/opt/app/bin"))
+            ),
+            Some(PathBuf::from("/opt/app"))
+        );
     }
 }
