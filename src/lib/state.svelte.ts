@@ -427,7 +427,7 @@ function notifySessionEnd(summary: SessionSummary) {
 // ---------------------------------------------------------------------------
 // Gains
 
-/** « Tu as gagné Phantom Blade Zero (BOBLENNON) avec Michoko ! » */
+/** « Tu as gagné le concours BOBLENNON avec Michoko… » (le jeu, c'est le gagnant qui le choisit). */
 export function winText(win: Win): string {
   const account = (app.overview?.accounts ?? []).find((a) => a.id === win.account);
   return t(win.product ? 'win.textGame' : 'win.text', {

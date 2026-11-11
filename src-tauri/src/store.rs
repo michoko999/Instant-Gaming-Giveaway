@@ -405,24 +405,41 @@ impl Store {
         winners: &[crate::checker::Winner],
         now: DateTime<Utc>,
     ) -> Vec<Win> {
+        // Le gagnant choisit son jeu : juste après le tirage, `product` est vide, puis il
+        // indique le jeu choisi. Un gain déjà connu est alors complété, pas compté deux fois.
         let mut found = Vec::new();
         for account in &self.accounts.list {
             for w in winners.iter().filter(|w| winner_is(account, w)) {
-                let known = self.meta.wins.iter().any(|x| {
-                    x.account == account.id
-                        && x.code.eq_ignore_ascii_case(code)
-                        && x.product_url == w.product_url
-                });
-                if !known {
-                    found.push(Win {
-                        account: account.id.clone(),
-                        code: code.to_string(),
-                        product: w.product_url.as_deref().and_then(product_name),
-                        product_url: w.product_url.clone(),
-                        detected_at: now,
-                        seen: false,
-                    });
+                let same = |x: &Win| x.account == account.id && x.code.eq_ignore_ascii_case(code);
+                if self
+                    .meta
+                    .wins
+                    .iter()
+                    .chain(found.iter())
+                    .any(|x| same(x) && x.product_url == w.product_url)
+                {
+                    continue;
                 }
+                if w.product_url.is_some() {
+                    if let Some(open) = self
+                        .meta
+                        .wins
+                        .iter_mut()
+                        .find(|x| same(x) && x.product_url.is_none())
+                    {
+                        open.product = w.product_url.as_deref().and_then(product_name);
+                        open.product_url = w.product_url.clone();
+                        continue;
+                    }
+                }
+                found.push(Win {
+                    account: account.id.clone(),
+                    code: code.to_string(),
+                    product: w.product_url.as_deref().and_then(product_name),
+                    product_url: w.product_url.clone(),
+                    detected_at: now,
+                    seen: false,
+                });
             }
         }
         self.meta.wins.extend(found.iter().cloned());
@@ -996,6 +1013,36 @@ mod tests {
         // Déjà connus : rien de nouveau.
         assert!(store.record_wins("supremeleader", &winners, now).is_empty());
         assert_eq!(store.meta.wins.len(), 2);
+
+        // Faerune choisit son jeu : le gain existant est complété, sans nouvelle alerte.
+        let chosen =
+            "https://www.instant-gaming.com/fr/20755-acheter-assetto-corsa-rally-pc-steam/";
+        let later = vec![Winner {
+            nickname: "faerune".into(),
+            profile: Some("gamer-91bf31".into()),
+            product_url: Some(chosen.into()),
+        }];
+        assert!(store.record_wins("SUPREMELEADER", &later, now).is_empty());
+        assert_eq!(store.meta.wins.len(), 2);
+        let faerune = store
+            .meta
+            .wins
+            .iter()
+            .find(|w| w.account == "second")
+            .unwrap();
+        assert_eq!(faerune.product.as_deref(), Some("Assetto Corsa Rally"));
+
+        // Un mois plus tard, Faerune regagne (jeu pas encore choisi) : c'est un nouveau gain.
+        let again = vec![
+            later[0].clone(),
+            Winner {
+                nickname: "faerune".into(),
+                profile: Some("gamer-91bf31".into()),
+                product_url: None,
+            },
+        ];
+        assert_eq!(store.record_wins("SUPREMELEADER", &again, now).len(), 1);
+        assert_eq!(store.meta.wins.len(), 3);
     }
 
     #[test]
