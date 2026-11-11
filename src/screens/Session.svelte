@@ -3,7 +3,7 @@
   import Icon from '../lib/Icon.svelte';
   import Ring from '../lib/Ring.svelte';
   import { api, type Outcome, type SessionAction } from '../lib/api';
-  import { accountName, activeAccount, app, clockTime, duration, fail, shortMessage, t } from '../lib/state.svelte';
+  import { accountName, activeAccount, app, clockTime, duration, endMulti, fail, nextAccountNow, shortMessage, t } from '../lib/state.svelte';
 
   const s = $derived(app.session);
   const manual = $derived(s?.mode === 'manual');
@@ -21,6 +21,29 @@
   function showPage() {
     api.showIgWindow().catch(fail);
   }
+
+  // Raccourcis clavier : Espace = pause / reprise, Échap = arrêter, → = passer.
+  function keys(event: KeyboardEvent) {
+    if (!s || event.ctrlKey || event.altKey || event.metaKey) return;
+    const target = event.target as HTMLElement | null;
+    if (target && (target.closest('input, textarea, select') || target.isContentEditable)) return;
+    if (event.key === ' ' || event.code === 'Space') {
+      event.preventDefault();
+      control(paused || needsLogin ? 'resume' : 'pause');
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      control('stop');
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      control('skip');
+    }
+  }
+
+  // Série « tous les comptes » : compte en cours, compte suivant pendant la pause.
+  const run = $derived(app.multi);
+  const accountOf = (id: string | undefined) => (app.overview?.accounts ?? []).find((a) => a.id === id);
+  const nextAccount = $derived(run ? accountOf(run.ids[run.index + 1]) : undefined);
+  const lastResult = $derived(run?.results.at(-1));
 
   const icon: Record<Outcome, 'check' | 'minus-circle' | 'alert' | 'skip' | 'external'> = {
     participated: 'check',
@@ -44,7 +67,27 @@
   };
 </script>
 
-{#if s}
+<svelte:window onkeydown={keys} />
+
+{#if run && run.waiting !== null}
+  <div class="screen page interlude">
+    <section class="pause-card glass" aria-live="polite">
+      <span class="eyebrow">{t('multi.step', { n: run.index + 1, total: run.ids.length })}</span>
+      <h1 class="serif">
+        {t('multi.doneA', { name: accountName(accountOf(lastResult?.id)) })}
+        <em>{t('multi.doneB', { n: lastResult?.summary.participated ?? 0 })}</em>
+      </h1>
+      <div class="next">
+        <Avatar account={nextAccount} size={44} />
+        <span class="muted">{t('multi.next', { name: accountName(nextAccount), n: run.waiting })}</span>
+      </div>
+      <div class="row">
+        <button type="button" class="btn btn-primary" onclick={nextAccountNow}><Icon name="next" size={16} />{t('multi.nextNow')}</button>
+        <button type="button" class="btn btn-quiet" onclick={endMulti}><Icon name="stop" size={14} />{t('multi.stop')}</button>
+      </div>
+    </section>
+  </div>
+{:else if s}
   <div class="screen page">
     <header class="top">
       <div class="title">
@@ -58,7 +101,10 @@
           <span class="safe"><Icon name="shield" size={14} />{t('session.safe')}</span>
         {/if}
         {#if (app.overview?.accounts.length ?? 0) > 1}
-          <span class="for"><Avatar account={activeAccount()} size={22} />{accountName(activeAccount())}</span>
+          <span class="for">
+            <Avatar account={activeAccount()} size={22} />{accountName(activeAccount())}
+            {#if run}<span class="faint">· {t('multi.step', { n: run.index + 1, total: run.ids.length })}</span>{/if}
+          </span>
         {/if}
       </div>
       <div class="row">
@@ -154,12 +200,45 @@
           {/each}
         </ol>
         <p class="faint small note">{t('session.pendingNote')}</p>
+        <p class="faint small note keys">{t('session.keys')}</p>
       </section>
     </div>
   </div>
 {/if}
 
 <style>
+  .interlude {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pause-card {
+    max-width: 560px;
+    padding: 36px 40px;
+    border-radius: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: igfadein 0.3s ease-out;
+  }
+  .pause-card h1 {
+    margin: 0;
+    font-size: 42px;
+    line-height: 1.05;
+    font-weight: 400;
+  }
+  .pause-card em {
+    color: var(--accent);
+  }
+  .next {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .keys {
+    margin-top: 2px;
+  }
   .for {
     display: inline-flex;
     align-items: center;

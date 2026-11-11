@@ -1,7 +1,25 @@
 <script lang="ts">
   import Icon from '../lib/Icon.svelte';
   import Ring from '../lib/Ring.svelte';
-  import { activeAccount, app, duration, minDelay, saveSettings, since, startSession, t, updateLists, SAFE_MIN_DELAY } from '../lib/state.svelte';
+  import { api } from '../lib/api';
+  import {
+    ackWins,
+    activeAccount,
+    app,
+    duration,
+    fail,
+    minDelay,
+    multiCandidates,
+    refresh,
+    saveSettings,
+    since,
+    startAllAccounts,
+    startSession,
+    t,
+    updateLists,
+    winText,
+    SAFE_MIN_DELAY,
+  } from '../lib/state.svelte';
 
   const o = $derived(app.overview);
   const counts = $derived(o?.counts);
@@ -37,12 +55,66 @@
     return connected ? t('home.leadAuto') : t('home.connectHint');
   });
 
+  // Gains pas encore vus, et bandeau « nouveau mois » (une fois par mois, si rien n'est encore fait).
+  const unseenWins = $derived((o?.meta.wins ?? []).filter((w) => !w.seen));
+  const firstWin = $derived(unseenWins[0]);
+  const thisMonth = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  })();
+  const showMonth = $derived(
+    queue > 0 && (o?.stats.doneThisMonth ?? 0) === 0 && (o?.stats.totalParticipations ?? 0) > 0 && o?.meta.seenMonth !== thisMonth,
+  );
+  async function dismissMonth() {
+    try {
+      await api.dismissMonth();
+      await refresh();
+    } catch (e) {
+      fail(e);
+    }
+  }
+
+  // Tous les comptes d'un coup : à partir de deux comptes connectés qui ont des concours à faire.
+  const multi = $derived(multiCandidates());
+
   const syncLine = $derived(
     o?.meta.lastSync ? t('home.synced', { when: since(o.meta.lastSync), n: counts?.total ?? 0 }) : t('home.neverSynced'),
   );
 </script>
 
 <div class="screen page">
+  {#if firstWin}
+    <section class="banner win glass" role="status">
+      <span class="badge"><Icon name="trophy" size={22} /></span>
+      <span class="what">
+        <strong>{unseenWins.length > 1 ? t('win.titleMany', { n: unseenWins.length }) : t('win.title')}</strong>
+        {#each unseenWins.slice(0, 3) as w (w.account + w.code + (w.productUrl ?? ''))}
+          <span class="muted small">{winText(w)}</span>
+        {/each}
+        <span class="faint small">{t('win.hint')}</span>
+      </span>
+      {#if firstWin.productUrl}
+        <button type="button" class="btn btn-sm" onclick={() => firstWin?.productUrl && api.openExternal(firstWin.productUrl).catch(fail)}>
+          <Icon name="external" size={14} />{t('win.see')}
+        </button>
+      {/if}
+      <button type="button" class="btn btn-sm btn-primary" onclick={ackWins}>{t('win.ok')}</button>
+    </section>
+  {/if}
+
+  {#if showMonth}
+    <section class="banner glass" role="status">
+      <span class="badge moon"><Icon name="moon" size={20} /></span>
+      <span class="what">
+        <strong>{t('month.title')}</strong>
+        <span class="muted small">{t('month.text', { n: queue })}</span>
+      </span>
+      <button type="button" class="btn btn-sm btn-quiet icon-btn" aria-label={t('common.close')} onclick={dismissMonth}>
+        <Icon name="close" size={14} />
+      </button>
+    </section>
+  {/if}
+
   <section class="hero">
     <div class="intro">
       <span class="eyebrow">{syncLine}</span>
@@ -67,6 +139,11 @@
           </button>
         </div>
         <span class="faint small">{t('home.estimate', { duration: duration(estimate) })}</span>
+        {#if multi.length >= 2}
+          <button type="button" class="btn btn-quiet all" onclick={startAllAccounts} disabled={busy}>
+            <Icon name="users" size={16} />{t('home.startAll', { n: multi.length })}
+          </button>
+        {/if}
       {/if}
 
       <button type="button" class="btn btn-quiet refresh" onclick={() => updateLists('all')} disabled={busy}>
@@ -141,6 +218,50 @@
 </div>
 
 <style>
+  .banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px 14px 18px;
+    margin-bottom: 18px;
+    border-radius: 20px;
+    animation: igfadein 0.3s ease-out;
+  }
+  .banner .what {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .banner strong {
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .badge {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+  .badge.moon {
+    color: var(--lilac);
+    background: color-mix(in srgb, var(--lilac) 16%, transparent);
+  }
+  .win {
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  .all {
+    align-self: flex-start;
+    margin-top: 4px;
+    padding-left: 0;
+  }
   .page {
     max-width: 1280px;
     margin: 0 auto;

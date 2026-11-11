@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import Icon from '../lib/Icon.svelte';
   import { api, type Giveaway } from '../lib/api';
-  import { activeAccount, app, fail, since, t, toast, updateLists } from '../lib/state.svelte';
+  import { activeAccount, app, fail, refresh, since, t, toast, updateLists } from '../lib/state.svelte';
 
   type Filter = 'all' | 'active' | 'ended' | 'unknown' | 'ignored';
   let items = $state<Giveaway[]>([]);
@@ -34,9 +34,22 @@
 
   const busy = $derived(app.syncing || app.checking);
 
+  // « Nouveau » : ajouté depuis la visite précédente de cet écran. La date est lue à l'ouverture,
+  // puis la visite est enregistrée (les étiquettes restent visibles jusqu'à la prochaine fois).
+  let seenAt = $state<number | null>(null);
+  onMount(() => {
+    const previous = app.overview?.meta.giveawaysSeenAt;
+    seenAt = previous ? new Date(previous).getTime() : null;
+    api
+      .markGiveawaysSeen()
+      .then(() => refresh())
+      .catch(() => {});
+  });
+  const isNew = (g: Giveaway) => seenAt !== null && !g.ignored && new Date(g.addedAt).getTime() > seenAt;
+
   const filtered = $derived.by(() => {
     const q = query.trim().toLowerCase();
-    return items.filter((g) => {
+    const list = items.filter((g) => {
       if (q && !g.code.toLowerCase().includes(q)) return false;
       switch (filter) {
         case 'ignored':
@@ -47,6 +60,8 @@
           return !g.ignored && g.status === filter;
       }
     });
+    // Les nouveaux d'abord.
+    return [...list.filter(isNew), ...list.filter((g) => !isNew(g))];
   });
 
   const count = (f: Filter) =>
@@ -183,6 +198,7 @@
       <div class="item" class:dim={g.ignored}>
         <span class="mono code">{g.code}</span>
         <span class="chip {chip[g.status]}">{t(statusKey[g.status])}</span>
+        {#if isNew(g)}<span class="chip fresh">{t('gw.new')}</span>{/if}
         <span class="muted small when">
           {g.lastParticipation ? t('gw.lastParticipation', { when: since(g.lastParticipation) }) : t('gw.neverParticipated')}
         </span>
@@ -203,6 +219,11 @@
 </div>
 
 <style>
+  .fresh {
+    color: #0b0d22;
+    background: var(--lilac);
+    font-weight: 600;
+  }
   .page {
     max-width: 1100px;
     margin: 0 auto;

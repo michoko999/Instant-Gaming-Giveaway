@@ -2,9 +2,12 @@
   import Icon from '../lib/Icon.svelte';
   import MonthChart from '../lib/MonthChart.svelte';
   import { api, type HistoryEntry, type Outcome } from '../lib/api';
-  import { activeAccount, app, clockTime, fail, shortMessage, t, toast } from '../lib/state.svelte';
+  import { accountName, activeAccount, app, clockTime, dateTime, fail, shortMessage, t, toast } from '../lib/state.svelte';
 
   let entries = $state<HistoryEntry[]>([]);
+  // Gains repérés (tous comptes), du plus récent au plus ancien.
+  const wins = $derived([...(app.overview?.meta.wins ?? [])].reverse());
+  const accountOf = (id: string) => (app.overview?.accounts ?? []).find((a) => a.id === id);
   let loaded = $state(false);
 
   // Historique du compte actif : rechargé quand on change de compte.
@@ -66,6 +69,28 @@
     <div class="glass"><dd class="serif">{app.overview?.counts.queue ?? 0}</dd><dt>{t('hist.remaining')}</dt></div>
   </dl>
 
+  {#if wins.length > 0}
+    <section class="wins glass" aria-labelledby="wins-title">
+      <h2 id="wins-title" class="label">{t('win.history')}</h2>
+      {#each wins as w (w.account + w.code + (w.productUrl ?? '') + w.detectedAt)}
+        <div class="win">
+          <span class="trophy"><Icon name="trophy" size={18} /></span>
+          <span class="what">
+            <span class="game">{w.product ?? t('win.someGame')}</span>
+            <span class="faint small">
+              <span class="mono">{w.code}</span> · {accountName(accountOf(w.account))} · {dateTime(w.detectedAt)}
+            </span>
+          </span>
+          {#if w.productUrl}
+            <button type="button" class="btn btn-sm btn-quiet" onclick={() => w.productUrl && api.openExternal(w.productUrl).catch(fail)}>
+              <Icon name="external" size={14} />{t('win.see')}
+            </button>
+          {/if}
+        </div>
+      {/each}
+    </section>
+  {/if}
+
   {#if stats && stats.totalParticipations > 0}
     <MonthChart data={stats.monthly} />
   {/if}
@@ -91,6 +116,44 @@
 </div>
 
 <style>
+  .wins {
+    padding: 16px 20px;
+    border-radius: 24px;
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .wins h2 {
+    margin: 0 0 6px;
+  }
+  .win {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+  }
+  .win + .win {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .trophy {
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+  .win .what {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .game {
+    font-weight: 500;
+  }
   .page {
     max-width: 1000px;
     margin: 0 auto;

@@ -185,6 +185,6 @@ jobs:
 
             Windows : Microsoft Edge WebView2 (déjà présent sur Windows 11 et Windows 10 à jour · *built into Windows 11 and up-to-date Windows 10*).
 
-            Documentation : [README](https://github.com/${{ github.repository }}#readme) (7 langues · 7 languages).
+            Documentation : [README](https://github.com/${{ github.repository }}#readme) (7 langues · 7 languages) · [Code signing policy](https://github.com/${{ github.repository }}/blob/main/docs/CODE_SIGNING_POLICY.md).
 
             Projet open source, non affilié à Instant Gaming · *Open source project, not affiliated with Instant Gaming.*

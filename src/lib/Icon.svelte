@@ -28,7 +28,10 @@
     | 'trash'
     | 'shield'
     | 'flame'
-    | 'chevron-down';
+    | 'chevron-down'
+    | 'trophy'
+    | 'moon'
+    | 'users';
 
   let { name, size = 18 }: { name: Name; size?: number } = $props();
 
@@ -57,6 +60,9 @@
     close: 'M6 6l12 12 M18 6 6 18',
     plus: 'M12 5v14 M5 12h14',
     'chevron-down': 'M6 9l6 6 6-6',
+    trophy: 'M8 21h8 M12 17v4 M7 4h10v5a5 5 0 0 1-10 0V4z M17 6h3v2a3 3 0 0 1-3 3 M7 6H4v2a3 3 0 0 0 3 3',
+    moon: 'M20 13.5A8 8 0 1 1 10.5 4a6.5 6.5 0 0 0 9.5 9.5z',
+    users: 'M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20 M10 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M20 20v-1.5a3.5 3.5 0 0 0-2.5-3.35 M15 4.65a3.5 3.5 0 0 1 0 6.7',
     search: 'M11 4a7 7 0 1 0 0 14a7 7 0 1 0 0-14z M20 20l-3.5-3.5',
     trash: 'M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13',
     shield: 'M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z M8.5 12l2.5 2.5 4.5-5',

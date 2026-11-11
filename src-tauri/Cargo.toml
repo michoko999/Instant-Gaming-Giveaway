@@ -1,6 +1,6 @@
 [package]
 name = "giveaway-ig"
-version = "2.0.1"
+version = "2.1.0"
 description = "Giveaway IG - participe aux concours Instant Gaming"
 authors = ["Michoko"]
 license = "MIT"
@@ -24,6 +24,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "serd
 url = "2"
 sha2 = "0.11"
 base64 = "0.23"
+tauri-plugin-notification = "2"
 
 [profile.release]
 codegen-units = 1

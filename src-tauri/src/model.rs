@@ -396,6 +396,8 @@ pub struct AccountView {
     pub active: bool,
     /// Concours différents déjà faits ce mois-ci par ce compte.
     pub done_this_month: usize,
+    /// Concours qu'une session de ce compte traiterait maintenant.
+    pub queue: usize,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -426,6 +428,26 @@ pub struct Meta {
     pub last_sync: Option<DateTime<Utc>>,
     pub last_check: Option<DateTime<Utc>>,
     pub last_session: Option<SessionSummary>,
+    /// Gains repérés dans les listes de gagnants.
+    pub wins: Vec<Win>,
+    /// Mois (« AAAA-MM ») dont le bandeau « nouveau mois » a été fermé.
+    pub seen_month: Option<String>,
+    /// Dernière visite de l'écran Concours : les concours ajoutés après sont « nouveaux ».
+    pub giveaways_seen_at: Option<DateTime<Utc>>,
+}
+
+/// Un compte de l'application apparaît parmi les gagnants d'un concours.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Win {
+    pub account: String,
+    pub code: String,
+    /// Jeu gagné (nom tiré de l'adresse de sa page) et adresse de la page.
+    pub product: Option<String>,
+    pub product_url: Option<String>,
+    pub detected_at: DateTime<Utc>,
+    /// L'utilisateur a déjà vu l'annonce.
+    pub seen: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -438,6 +460,8 @@ pub struct Counts {
     pub ignored: usize,
     /// Actifs restants pour une session (hors ignorés et déjà faits aujourd'hui si l'option est active).
     pub queue: usize,
+    /// Concours actifs ajoutés depuis la dernière visite de l'écran Concours.
+    pub fresh: usize,
 }
 
 #[derive(Debug, Clone, Default, Serialize)]

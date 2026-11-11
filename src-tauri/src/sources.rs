@@ -63,10 +63,12 @@ pub fn extract_code(raw: &str) -> Option<String> {
         }
         s
     };
-    let code: String = candidate
+    let mut code: String = candidate
         .chars()
         .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
         .collect();
+    let after = &candidate[code.len()..];
+    unglue(&mut code, after);
     if code.is_empty() || code.len() > 64 {
         None
     } else {
@@ -127,20 +129,32 @@ pub fn scan_page(text: &str) -> Vec<String> {
             .chars()
             .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
             .collect();
-        // Deux liens collés sans espace : « …/retroraiderhttps://… ».
-        if decoded[offset + code.len()..].starts_with("://") {
-            for scheme in ["https", "http"] {
-                if code.len() > scheme.len() && code.to_ascii_lowercase().ends_with(scheme) {
-                    code.truncate(code.len() - scheme.len());
-                    break;
-                }
-            }
-        }
+        let after = &decoded[offset + code.len()..];
+        unglue(&mut code, after);
         if !code.is_empty() && code.len() <= 64 && seen.insert(code.to_ascii_uppercase()) {
             codes.push(code);
         }
     }
     codes
+}
+
+/// Deux liens collés sans espace : « …/retroraiderhttps://… » donne « retroraider ».
+/// `after` est le texte qui suit le code lu.
+fn unglue(code: &mut String, after: &str) {
+    if after.starts_with("://") {
+        let lower = code.to_ascii_lowercase();
+        if let Some(clean) = glued_prefix(&lower) {
+            code.truncate(clean.len());
+        }
+    }
+}
+
+/// Code d'origine d'un code abîmé par un lien collé (« retroraiderhttps » → « retroraider »).
+pub fn glued_prefix(code: &str) -> Option<&str> {
+    ["https", "http"]
+        .iter()
+        .find_map(|scheme| code.strip_suffix(scheme))
+        .filter(|rest| !rest.is_empty())
 }
 
 /// Retire les doublons (sans tenir compte de la casse) en gardant l'ordre.
@@ -307,6 +321,10 @@ mod tests {
         assert_eq!(
             extract_code("  \"https://instant-gaming.com/en/giveaway/muusoo?x=1\" "),
             Some("muusoo".into())
+        );
+        assert_eq!(
+            extract_code("https://www.instant-gaming.com/fr/giveaway/retroraiderhttps://www.instant-gaming.com/fr/giveaway/HIGHSTYLED"),
+            Some("retroraider".into())
         );
         assert_eq!(extract_code("MFGAMING"), Some("MFGAMING".into()));
         assert_eq!(extract_code("Seals311"), Some("Seals311".into()));

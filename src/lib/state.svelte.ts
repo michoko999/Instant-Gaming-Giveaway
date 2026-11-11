@@ -13,6 +13,7 @@ import {
   type SessionSummary,
   type Settings,
   type UpdateInfo,
+  type Win,
 } from './api';
 import { fr, type DictKey, type Dict } from './i18n/fr';
 import { en } from './i18n/en';
@@ -53,12 +54,36 @@ export const app = $state({
   /** La fenêtre de connexion est ouverte : on attend « J'ai terminé ». */
   loginPending: false,
   verifying: false,
+  /** Session enchaînée sur tous les comptes connectés. */
+  multi: null as MultiRun | null,
+  /** Résultats par compte de la dernière série « tous les comptes » (pour le récapitulatif). */
+  multiResults: [] as { id: string; summary: SessionSummary }[],
 });
+
+export interface MultiRun {
+  /** Comptes à traiter, dans l'ordre. */
+  ids: string[];
+  /** Compte en cours (indice dans `ids`). */
+  index: number;
+  /** Compte actif avant le lancement, remis à la fin. */
+  original: string;
+  results: { id: string; summary: SessionSummary }[];
+  /** Secondes avant le compte suivant (pause entre deux comptes), sinon null. */
+  waiting: number | null;
+}
+
+/** Pause entre deux comptes, pour ne pas enchaîner les connexions trop vite. */
+const BETWEEN_ACCOUNTS = 15;
 
 /** Traduit une clé, avec remplacement des {variables}. */
 export function t(key: DictKey, vars: Record<string, string | number> = {}): string {
   const dict = DICTS[app.lang] ?? fr;
   let text = dict[key] ?? fr[key] ?? key;
+  // « singulier|pluriel » : la forme est choisie d'après {n}.
+  if (text.includes('|') && typeof vars.n === 'number') {
+    const forms = text.split('|');
+    text = forms[new Intl.PluralRules(app.lang).select(vars.n) === 'one' ? 0 : forms.length - 1];
+  }
   for (const [name, value] of Object.entries(vars)) {
     text = text.replaceAll(`{${name}}`, String(value));
   }
@@ -178,7 +203,7 @@ export async function updateLists(scope: CheckScope = 'unknown', withSync = true
   }
 }
 
-export async function startSession(mode: SessionMode, codes?: string[]) {
+export async function startSession(mode: SessionMode, codes?: string[]): Promise<boolean> {
   try {
     app.logs = [];
     app.summary = null;
@@ -202,8 +227,10 @@ export async function startSession(mode: SessionMode, codes?: string[]) {
       countdown: null,
     };
     app.screen = 'session';
+    return true;
   } catch (e) {
     fail(e);
+    return false;
   }
 }
 
@@ -220,10 +247,24 @@ export async function setupListeners() {
     app.logs = [entry, ...app.logs].slice(0, 200);
   });
   await events.sessionFinished(async (summary) => {
-    app.summary = summary;
     app.session = null;
-    app.screen = 'recap';
     await refresh().catch(() => {});
+    if (app.multi) {
+      await multiSessionFinished(summary);
+      return;
+    }
+    app.summary = summary;
+    app.multiResults = [];
+    app.screen = 'recap';
+    notifySessionEnd(summary);
+  });
+  await events.winsFound(async (wins) => {
+    await refresh().catch(() => {});
+    const first = wins[0];
+    if (!first) return;
+    const text = winText(first);
+    toast(text);
+    notifyInBackground(t('win.notifyTitle'), text);
   });
   await events.checkProgress((progress) => {
     app.check = progress;
@@ -363,4 +404,153 @@ export async function boot() {
     const stale = Date.now() - lastCheck > 6 * 3600 * 1000;
     updateLists(stale ? 'all' : 'unknown');
   }
+}
+
+// ---------------------------------------------------------------------------
+// Notifications du système : seulement quand l'application est en arrière-plan.
+
+function notifyInBackground(title: string, body: string) {
+  if (document.hasFocus()) return;
+  api.notify(title, body).catch(() => {});
+}
+
+function notifySessionEnd(summary: SessionSummary) {
+  const pending = summary.pending.length;
+  notifyInBackground(
+    t('notify.sessionTitle'),
+    pending > 0
+      ? t('notify.sessionBodyPending', { n: summary.participated, pending })
+      : t('notify.sessionBody', { n: summary.participated }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Gains
+
+/** « Tu as gagné le concours BOBLENNON avec Michoko… » (le jeu, c'est le gagnant qui le choisit). */
+export function winText(win: Win): string {
+  const account = (app.overview?.accounts ?? []).find((a) => a.id === win.account);
+  return t(win.product ? 'win.textGame' : 'win.text', {
+    game: win.product ?? '',
+    code: win.code,
+    name: accountName(account),
+  });
+}
+
+export async function ackWins() {
+  try {
+    await api.ackWins();
+    await refresh();
+  } catch (e) {
+    fail(e);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tous les comptes d'un coup : une session automatique par compte connecté, à la suite.
+
+/** Comptes qu'une session « tous les comptes » traiterait. */
+export function multiCandidates(): Account[] {
+  return (app.overview?.accounts ?? []).filter((a) => a.connected && a.queue > 0);
+}
+
+export async function startAllAccounts() {
+  const list = multiCandidates();
+  if (list.length === 0) {
+    toast(t('error.no-giveaways'), 'error');
+    return;
+  }
+  app.multi = {
+    ids: list.map((a) => a.id),
+    index: 0,
+    original: activeAccount()?.id ?? list[0].id,
+    results: [],
+    waiting: null,
+  };
+  await runMultiAccount();
+}
+
+async function runMultiAccount() {
+  const run = app.multi;
+  if (!run) return;
+  const id = run.ids[run.index];
+  try {
+    if (activeAccount()?.id !== id) {
+      await api.switchAccount(id);
+      await refresh();
+    }
+  } catch (e) {
+    fail(e);
+    await endMulti();
+    return;
+  }
+  if (!(await startSession('auto'))) await endMulti();
+}
+
+let multiTimer: ReturnType<typeof setInterval> | undefined;
+
+async function multiSessionFinished(summary: SessionSummary) {
+  const run = app.multi;
+  if (!run) return;
+  run.results.push({ id: run.ids[run.index], summary });
+  // Arrêt demandé, ou arrêt de sécurité du mode prudent : on ne passe pas aux autres comptes.
+  const stop = summary.stopped || !!summary.stopReason;
+  if (stop || run.index + 1 >= run.ids.length) {
+    await endMulti();
+    return;
+  }
+  app.screen = 'session';
+  run.waiting = BETWEEN_ACCOUNTS;
+  clearInterval(multiTimer);
+  multiTimer = setInterval(() => {
+    if (!app.multi || app.multi.waiting === null) return clearInterval(multiTimer);
+    app.multi.waiting -= 1;
+    if (app.multi.waiting <= 0) nextAccountNow();
+  }, 1000);
+}
+
+/** Passe tout de suite au compte suivant (pendant la pause). */
+export function nextAccountNow() {
+  const run = app.multi;
+  if (!run || run.waiting === null) return;
+  clearInterval(multiTimer);
+  run.waiting = null;
+  run.index += 1;
+  runMultiAccount();
+}
+
+/** Termine la série : récapitulatif commun et retour au compte de départ. */
+export async function endMulti() {
+  clearInterval(multiTimer);
+  const run = app.multi;
+  if (!run) return;
+  app.multi = null;
+  if (run.results.length > 0) {
+    const total = run.results.reduce(
+      (acc, { summary: s }) => ({
+        ...acc,
+        total: acc.total + s.total,
+        participated: acc.participated + s.participated,
+        already: acc.already + s.already,
+        opened: acc.opened + s.opened,
+        ended: acc.ended + s.ended,
+        errors: acc.errors + s.errors,
+        skipped: acc.skipped + s.skipped,
+        stopped: acc.stopped || s.stopped,
+        stopReason: acc.stopReason ?? s.stopReason,
+        finishedAt: s.finishedAt,
+      }),
+      { ...run.results[0].summary, total: 0, participated: 0, already: 0, opened: 0, ended: 0, errors: 0, skipped: 0, pending: [] as string[], limited: 0 },
+    );
+    total.startedAt = run.results[0].summary.startedAt;
+    total.pending = run.results.flatMap((r) => r.summary.pending);
+    app.summary = total;
+    app.multiResults = run.results;
+    notifySessionEnd(total);
+  }
+  if (activeAccount()?.id !== run.original) {
+    await api.switchAccount(run.original).catch(() => {});
+    await refresh().catch(() => {});
+  }
+  app.screen = run.results.length > 0 ? 'recap' : 'home';
 }
