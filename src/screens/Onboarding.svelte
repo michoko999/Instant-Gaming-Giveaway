@@ -2,7 +2,7 @@
   import Icon from '../lib/Icon.svelte';
   import Ring from '../lib/Ring.svelte';
   import { api, type SessionMode } from '../lib/api';
-  import { app, duration, fail, minDelay, saveSettings, t, updateLists, SAFE_MIN_DELAY } from '../lib/state.svelte';
+  import { activeAccount, app, duration, fail, minDelay, saveSettings, t, updateLists, SAFE_MIN_DELAY } from '../lib/state.svelte';
 
   type Step = 'connect' | 'waiting' | 'check' | 'ready';
   let step = $state<Step>('connect');
@@ -13,7 +13,7 @@
   const min = $derived(minDelay(app.overview?.settings));
 
   const stepIndex = $derived(step === 'connect' || step === 'waiting' ? 0 : step === 'check' ? 1 : 2);
-  const connected = $derived(app.overview?.settings.accountConnected ?? false);
+  const connected = $derived(activeAccount()?.connected ?? false);
   const counts = $derived(app.overview?.counts);
   const estimate = $derived.by(() => {
     const queue = counts?.queue ?? 0;
@@ -60,7 +60,7 @@
   async function goCheck() {
     step = 'check';
     await updateLists('all');
-    mode = app.overview?.settings.accountConnected ? 'auto' : 'manual';
+    mode = activeAccount()?.connected ? 'auto' : 'manual';
     step = 'ready';
   }
 

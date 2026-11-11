@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { tick } from 'svelte';
   import Icon from '../lib/Icon.svelte';
   import { api, type Giveaway } from '../lib/api';
-  import { app, fail, since, t, toast, updateLists } from '../lib/state.svelte';
+  import { activeAccount, app, fail, since, t, toast, updateLists } from '../lib/state.svelte';
 
   type Filter = 'all' | 'active' | 'ended' | 'unknown' | 'ignored';
   let items = $state<Giveaway[]>([]);
@@ -17,7 +17,12 @@
     }
   }
 
-  onMount(load);
+  // Charge la liste à l'ouverture et à chaque changement de compte (suivi propre à chaque compte).
+  const accountId = $derived(activeAccount()?.id);
+  $effect(() => {
+    void accountId;
+    load();
+  });
 
   // Recharge la liste après une mise à jour.
   let wasBusy = false;

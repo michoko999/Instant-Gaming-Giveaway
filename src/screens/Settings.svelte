@@ -1,7 +1,26 @@
 <script lang="ts">
+  import Avatar from '../lib/Avatar.svelte';
   import Icon from '../lib/Icon.svelte';
   import { api, REPO_URL, type Lang, type Source } from '../lib/api';
-  import { ACCENTS, LANGUAGES, app, fail, minDelay, refresh, saveSettings, t, toast, SAFE_MIN_DELAY } from '../lib/state.svelte';
+  import {
+    ACCENTS,
+    LANGUAGES,
+    accountName,
+    addAccount,
+    app,
+    fail,
+    logoutAccount,
+    minDelay,
+    openLogin,
+    refresh,
+    removeAccount,
+    saveSettings,
+    switchAccount,
+    t,
+    toast,
+    verifyLogin,
+    SAFE_MIN_DELAY,
+  } from '../lib/state.svelte';
 
   const o = $derived(app.overview);
   const s = $derived(o?.settings);
@@ -12,45 +31,25 @@
     seconds = s?.secondsPerGiveaway ?? SAFE_MIN_DELAY;
   });
 
-  let loginOpened = $state(false);
-  let verifying = $state(false);
+  const MAX_ACCOUNTS = 8;
+  const accounts = $derived(o?.accounts ?? []);
+  // Retirer un compte se confirme d'un second clic.
+  let confirmRemove = $state<string | null>(null);
+  let confirmTimer: ReturnType<typeof setTimeout> | undefined;
+  function askRemove(id: string) {
+    if (confirmRemove === id) {
+      confirmRemove = null;
+      removeAccount(id);
+      return;
+    }
+    confirmRemove = id;
+    clearTimeout(confirmTimer);
+    confirmTimer = setTimeout(() => (confirmRemove = null), 4000);
+  }
   let sourceName = $state('');
   let sourceUrl = $state('');
 
   const LIMITS = [20, 40, 80, 0];
-
-  async function login() {
-    try {
-      await api.openLogin();
-      loginOpened = true;
-      toast(t('onb.waiting'));
-    } catch (e) {
-      fail(e);
-    }
-  }
-
-  async function verify() {
-    verifying = true;
-    try {
-      const ok = await api.verifyLogin();
-      await refresh();
-      toast(ok ? t('account.connected') : t('onb.notConnected'), ok ? 'info' : 'error');
-      if (ok) loginOpened = false;
-    } catch (e) {
-      fail(e);
-    } finally {
-      verifying = false;
-    }
-  }
-
-  async function logout() {
-    try {
-      await api.logout();
-      await refresh();
-    } catch (e) {
-      fail(e);
-    }
-  }
 
   async function toggleSource(source: Source) {
     if (!s) return;
@@ -199,31 +198,64 @@
           </div>
         </section>
 
-        <section class="card glass">
-          <h2>{t('set.account')}</h2>
-          <div class="line">
-            <span class="status">
-              <span class="dot" style="background:{s.accountConnected ? 'var(--accent)' : 'var(--faint)'}"></span>
-              {s.accountConnected ? t('set.accountConnected') : t('set.accountDisconnected')}
-            </span>
-            <div class="row">
-              {#if s.accountConnected}
-                <button type="button" class="btn btn-sm" onclick={verify} disabled={verifying}>{t('set.verify')}</button>
-                <button type="button" class="btn btn-sm btn-quiet" onclick={logout}><Icon name="logout" size={14} />{t('set.logout')}</button>
-              {:else}
-                <button type="button" class="btn btn-sm btn-primary" onclick={login}><Icon name="login" size={14} />{t('set.login')}</button>
-                {#if loginOpened}
-                  <button type="button" class="btn btn-sm" onclick={verify} disabled={verifying}>
-                    {verifying ? t('onb.verifying') : t('onb.done')}
-                  </button>
-                {/if}
-              {/if}
-            </div>
-          </div>
-        </section>
       </div>
 
       <div class="col">
+        <section class="card glass" id="accounts">
+          <h2>{t('set.accounts')}</h2>
+          {#each accounts as account (account.id)}
+            <div class="line account">
+              <span class="who">
+                <Avatar {account} size={38} />
+                <span class="stack min0">
+                  <span class="row-inline">
+                    <span class="ellipsis">{accountName(account)}</span>
+                    {#if account.active && accounts.length > 1}<span class="chip">{t('set.activeAccount')}</span>{/if}
+                  </span>
+                  <span class="faint small status">
+                    <span class="dot" style="background:{account.connected ? 'var(--accent)' : 'var(--faint)'}"></span>
+                    {account.connected ? t('account.doneMonth', { n: account.doneThisMonth }) : t('set.accountDisconnected')}
+                  </span>
+                </span>
+              </span>
+              <div class="row">
+                {#if account.active}
+                  {#if account.connected}
+                    <button type="button" class="btn btn-sm" onclick={verifyLogin} disabled={app.verifying}>{t('set.verify')}</button>
+                    <button type="button" class="btn btn-sm btn-quiet" onclick={logoutAccount}><Icon name="logout" size={14} />{t('set.logout')}</button>
+                  {:else if app.loginPending}
+                    <button type="button" class="btn btn-sm btn-primary" onclick={verifyLogin} disabled={app.verifying}>
+                      {app.verifying ? t('onb.verifying') : t('onb.done')}
+                    </button>
+                  {:else}
+                    <button type="button" class="btn btn-sm btn-primary" onclick={openLogin}><Icon name="login" size={14} />{t('set.login')}</button>
+                  {/if}
+                {:else}
+                  <button type="button" class="btn btn-sm" onclick={() => switchAccount(account.id)}>{t('set.useAccount')}</button>
+                {/if}
+                {#if accounts.length > 1}
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-quiet"
+                    class:danger={confirmRemove === account.id}
+                    title={t('set.removeHint')}
+                    aria-label={t('set.removeAccount')}
+                    onclick={() => askRemove(account.id)}
+                  >
+                    <Icon name="trash" size={14} />{confirmRemove === account.id ? t('set.removeConfirm') : ''}
+                  </button>
+                {/if}
+              </div>
+            </div>
+          {/each}
+          <div class="line">
+            <span class="faint small hint">{t('set.accountsHint')}</span>
+            <button type="button" class="btn btn-sm" onclick={addAccount} disabled={accounts.length >= MAX_ACCOUNTS}>
+              <Icon name="plus" size={14} />{t('account.add')}
+            </button>
+          </div>
+        </section>
+
         <section class="card glass">
           <h2>{t('set.sources')}</h2>
           {#each s.sources as source (source.id)}
@@ -404,7 +436,25 @@
   .status {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+  }
+  .who {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 1 1 200px;
+  }
+  .row-inline .chip {
+    flex: none;
+  }
+  .hint {
+    flex: 1 1 220px;
+    line-height: 1.45;
+  }
+  .btn.danger {
+    color: var(--coral);
+    background: color-mix(in srgb, var(--coral) 12%, transparent);
   }
   .add {
     display: flex;

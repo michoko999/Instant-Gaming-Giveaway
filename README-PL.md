@@ -62,7 +62,7 @@ Domyślnie włączony: co najmniej 8 s między giveawayami, ograniczona liczba n
 <td valign="top">
 
 ### 📚 Zawsze aktualne listy
-Wbudowane są dwie listy społeczności i dwie strony, które udostępniają giveawaye (jv-actu.com, ledemondujeu.com). Dodaj własne: **Wklej linki**, plik, listę online albo dowolną stronę internetową.
+Wbudowane są dwie listy społeczności i dwie strony, które udostępniają giveawaye (jv-actu.com, ledemondujeu.com). Dodaj własne: **Wklej linki**, plik, listę online albo dowolną stronę internetową. Zakończone giveawaye są co tydzień sprawdzane ponownie i wracają same.
 
 </td>
 </tr>
@@ -75,8 +75,8 @@ Instant Gaming przyjmuje jedno zgłoszenie na giveaway w miesiącu: aplikacja po
 </td>
 <td valign="top">
 
-### ♻️ Nic nie przepada
-Zakończone giveawaye zostają na liście i są ponownie sprawdzane co tydzień. Jeśli któryś wróci, zostanie automatycznie przywrócony.
+### 👥 Kilka kont
+Dodaj konta osób z twojego domu: każde ma własne logowanie, miesięczne podsumowanie i historię. Zdjęcie i nazwa aktywnego konta widnieją w prawym górnym rogu.
 
 </td>
 </tr>
@@ -174,6 +174,7 @@ Jeśli mimo to antywirus zgłasza aplikację, otwórz [issue](https://github.com
 | Adres | Po co |
 |:--|:--|
 | `instant-gaming.com` | sprawdzanie giveawayów i udział w nich |
+| `gaming-cdn.com` | pobieranie zdjęcia profilowego twojego konta |
 | `raw.githubusercontent.com`, `jv-actu.com`, `ledemondujeu.com` | pobieranie list giveawayów (każde źródło można wyłączyć) |
 | `api.github.com`, `github.com` | sprawdzanie, czy jest nowa wersja, i jej pobieranie (można wyłączyć) |
 
@@ -189,6 +190,12 @@ Taka jest zasada Instant Gaming: jedno zgłoszenie na giveaway w miesiącu. Apli
 <summary><b>Jak dodać giveawaye, których nie ma na listach?</b></summary>
 <br />
 W zakładce <b>Giveawaye</b> kliknij <b>Wklej linki</b> i wklej linki albo kody Instant Gaming (tekst dookoła jest pomijany). Możesz też zaimportować plik albo dodać listę online lub stronę internetową w <b>Ustawienia → Źródła giveawayów</b>. Żeby podzielić się nimi ze wszystkimi, otwórz <a href="https://github.com/michoko999/Instant-Gaming-Giveaway/issues">issue</a>, a trafią na wspólną listę.
+</details>
+
+<details>
+<summary><b>Czy mogę używać kilku kont Instant Gaming?</b></summary>
+<br />
+Tak: kliknij swoje konto w prawym górnym rogu, potem <b>Dodaj konto</b>, i zaloguj się na nie w oknie, które się otworzy. Każde konto ma własne logowanie, własne miesięczne podsumowanie i własną historię; menu w prawym górnym rogu pozwala przełączać się między nimi. Regulaminy giveawayów często pozwalają tylko na jedno zgłoszenie na osobę: używaj jednego konta na osobę.
 </details>
 
 <details>

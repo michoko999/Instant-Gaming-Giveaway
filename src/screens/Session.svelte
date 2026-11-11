@@ -1,8 +1,9 @@
 <script lang="ts">
+  import Avatar from '../lib/Avatar.svelte';
   import Icon from '../lib/Icon.svelte';
   import Ring from '../lib/Ring.svelte';
   import { api, type Outcome, type SessionAction } from '../lib/api';
-  import { app, clockTime, duration, fail, shortMessage, t } from '../lib/state.svelte';
+  import { accountName, activeAccount, app, clockTime, duration, fail, shortMessage, t } from '../lib/state.svelte';
 
   const s = $derived(app.session);
   const manual = $derived(s?.mode === 'manual');
@@ -55,6 +56,9 @@
         </span>
         {#if !manual && app.overview?.settings.safeMode}
           <span class="safe"><Icon name="shield" size={14} />{t('session.safe')}</span>
+        {/if}
+        {#if (app.overview?.accounts.length ?? 0) > 1}
+          <span class="for"><Avatar account={activeAccount()} size={22} />{accountName(activeAccount())}</span>
         {/if}
       </div>
       <div class="row">
@@ -156,6 +160,13 @@
 {/if}
 
 <style>
+  .for {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--muted);
+  }
   .page {
     max-width: 1320px;
     margin: 0 auto;

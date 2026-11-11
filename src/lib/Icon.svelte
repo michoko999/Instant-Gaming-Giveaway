@@ -27,7 +27,8 @@
     | 'search'
     | 'trash'
     | 'shield'
-    | 'flame';
+    | 'flame'
+    | 'chevron-down';
 
   let { name, size = 18 }: { name: Name; size?: number } = $props();
 
@@ -55,6 +56,7 @@
     external: 'M14 4h6v6 M20 4l-9 9 M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
     close: 'M6 6l12 12 M18 6 6 18',
     plus: 'M12 5v14 M5 12h14',
+    'chevron-down': 'M6 9l6 6 6-6',
     search: 'M11 4a7 7 0 1 0 0 14a7 7 0 1 0 0-14z M20 20l-3.5-3.5',
     trash: 'M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13',
     shield: 'M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z M8.5 12l2.5 2.5 4.5-5',

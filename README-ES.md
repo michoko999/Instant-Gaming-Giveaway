@@ -62,7 +62,7 @@ Activado por defecto: al menos 8 s entre sorteos, un número limitado por sesió
 <td valign="top">
 
 ### 📚 Listas siempre al día
-Incluye dos listas de la comunidad y dos sitios que comparten sorteos (jv-actu.com, ledemondujeu.com). Añade las tuyas: **Pegar enlaces**, un archivo, una lista en línea o cualquier página web.
+Incluye dos listas de la comunidad y dos sitios que comparten sorteos (jv-actu.com, ledemondujeu.com). Añade las tuyas: **Pegar enlaces**, un archivo, una lista en línea o cualquier página web. Los sorteos terminados se vuelven a comprobar cada semana y vuelven solos.
 
 </td>
 </tr>
@@ -75,8 +75,8 @@ Instant Gaming acepta una participación por sorteo y por mes: la aplicación sa
 </td>
 <td valign="top">
 
-### ♻️ No se pierde nada
-Los sorteos terminados se quedan en la lista y se vuelven a comprobar cada semana. Si alguno vuelve, se recupera automáticamente.
+### 👥 Varias cuentas
+Añade las cuentas de las personas de tu casa: cada una tiene su propio inicio de sesión, su seguimiento mensual y su historial. La foto y el nombre de usuario de la cuenta activa aparecen arriba a la derecha.
 
 </td>
 </tr>
@@ -174,6 +174,7 @@ Si aun así un antivirus marca la aplicación, abre una [issue](https://github.c
 | Dirección | Para qué |
 |:--|:--|
 | `instant-gaming.com` | comprobar los sorteos y participar |
+| `gaming-cdn.com` | descargar la foto de perfil de tu cuenta |
 | `raw.githubusercontent.com`, `jv-actu.com`, `ledemondujeu.com` | descargar las listas de sorteos (cada fuente se puede desactivar) |
 | `api.github.com`, `github.com` | saber si hay una versión nueva y descargarla (se puede desactivar) |
 
@@ -189,6 +190,12 @@ Es la regla de Instant Gaming: una participación por sorteo y por mes. La aplic
 <summary><b>¿Cómo añado sorteos que no están en las listas?</b></summary>
 <br />
 En <b>Sorteos</b>, pulsa <b>Pegar enlaces</b> y pega enlaces o códigos de Instant Gaming (el texto de alrededor se ignora). También puedes importar un archivo o añadir una lista en línea o una página web en <b>Ajustes → Fuentes de sorteos</b>. Para compartirlos con todo el mundo, abre una <a href="https://github.com/michoko999/Instant-Gaming-Giveaway/issues">issue</a> y se añadirán a la lista común.
+</details>
+
+<details>
+<summary><b>¿Puedo usar varias cuentas de Instant Gaming?</b></summary>
+<br />
+Sí: pulsa en tu cuenta arriba a la derecha, luego en <b>Añadir una cuenta</b>, e inicia sesión con ella en la ventana que se abre. Cada cuenta tiene su propio inicio de sesión, su propio seguimiento mensual y su propio historial; el menú de arriba a la derecha permite pasar de una a otra. Las bases de los sorteos suelen permitir una sola participación por persona: usa una cuenta por persona.
 </details>
 
 <details>
