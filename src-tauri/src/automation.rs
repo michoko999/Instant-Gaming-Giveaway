@@ -244,6 +244,35 @@ pub struct Identity {
     pub profile: Option<String>,
 }
 
+/// Sites dont la page Instant Gaming peut ouvrir une fenêtre (pop-up) : la connexion avec
+/// Google, Facebook, Apple ou Discord passe par une fenêtre ouverte avec `window.open`.
+/// Les autres pop-ups (publicités, partages…) restent bloquées.
+const POPUP_HOSTS: [&str; 6] = [
+    "instant-gaming.com",
+    "accounts.google.com",
+    "facebook.com",
+    "appleid.apple.com",
+    "discord.com",
+    "discordapp.com",
+];
+
+/// La page peut-elle ouvrir cette fenêtre ? (connexion par un compte Google, Facebook, Apple, Discord)
+pub fn popup_allowed(url: &Url) -> bool {
+    if url.as_str() == "about:blank" {
+        // Certaines connexions ouvrent d'abord une fenêtre vide, puis la dirigent vers le site.
+        return true;
+    }
+    url.scheme() == "https"
+        && url
+            .host_str()
+            .map(|host| {
+                POPUP_HOSTS
+                    .iter()
+                    .any(|h| host == *h || host.ends_with(&format!(".{h}")))
+            })
+            .unwrap_or(false)
+}
+
 /// Hôtes autorisés pour la photo de profil (CDN d'Instant Gaming).
 pub fn avatar_host_allowed(host: &str) -> bool {
     ["gaming-cdn.com", "instant-gaming.com"]
@@ -339,6 +368,15 @@ pub fn open_ig(
         .additional_browser_args(BROWSER_ARGS)
         .visible(visibility != Visibility::Hidden)
         .focused(visibility == Visibility::Focus)
+        // Connexion avec Google, Facebook, Apple ou Discord : la fenêtre de connexion s'ouvre
+        // dans une vraie fenêtre (même profil, reliée à la page pour lui renvoyer le résultat).
+        .on_new_window(|url, _features| {
+            if popup_allowed(&url) {
+                tauri::webview::NewWindowResponse::Allow
+            } else {
+                tauri::webview::NewWindowResponse::Deny
+            }
+        })
         .on_navigation(move |url| {
             if url.host_str() == Some(REPORT_HOST) {
                 if let Some(report) = parse_report(url) {
@@ -414,6 +452,34 @@ pub fn close_ig(app: &AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_sign_in_popups_are_allowed() {
+        let ok = [
+            "https://accounts.google.com/o/oauth2/v2/auth?client_id=x&ux_mode=popup",
+            "https://www.facebook.com/v19.0/dialog/oauth?app_id=1",
+            "https://m.facebook.com/login.php",
+            "https://appleid.apple.com/auth/authorize?client_id=x",
+            "https://discord.com/oauth2/authorize?client_id=x",
+            "https://www.instant-gaming.com/fr/user/connect/discord/",
+            "about:blank",
+        ];
+        for u in ok {
+            assert!(popup_allowed(&Url::parse(u).unwrap()), "{u}");
+        }
+        let blocked = [
+            "https://ads.example.com/promo",
+            "https://twitter.com/intent/tweet?text=x",
+            "https://api.whatsapp.com/send?text=x",
+            "https://accounts.google.com.evil.example/",
+            "https://notdiscord.com/oauth2",
+            "http://accounts.google.com/o/oauth2/v2/auth",
+            "javascript:alert(1)",
+        ];
+        for u in blocked {
+            assert!(!popup_allowed(&Url::parse(u).unwrap()), "{u}");
+        }
+    }
 
     #[test]
     fn reads_identity_from_the_page() {
