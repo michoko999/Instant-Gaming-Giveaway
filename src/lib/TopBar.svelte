@@ -1,6 +1,7 @@
 <script lang="ts">
+  import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
-  import { app, t, type Screen } from './state.svelte';
+  import { accountName, activeAccount, addAccount, app, showAccounts, switchAccount, t, type Screen } from './state.svelte';
 
   const links: { screen: Screen; key: 'nav.home' | 'nav.giveaways' | 'nav.history' | 'nav.settings' }[] = [
     { screen: 'home', key: 'nav.home' },
@@ -9,8 +10,23 @@
     { screen: 'settings', key: 'nav.settings' },
   ];
 
-  const connected = $derived(app.overview?.settings.accountConnected ?? false);
+  const MAX_ACCOUNTS = 8;
+  const accounts = $derived(app.overview?.accounts ?? []);
+  const active = $derived(activeAccount());
+  const connected = $derived(active?.connected ?? false);
+  const label = $derived(
+    connected ? (active?.name ?? t('account.connected')) : accounts.length > 1 ? accountName(active) : t('account.disconnected'),
+  );
+
+  // Menu des comptes : se ferme au clic à l'extérieur ou avec Échap.
+  let open = $state(false);
+  let box = $state<HTMLDivElement>();
+  function outside(event: MouseEvent) {
+    if (open && box && !box.contains(event.target as Node)) open = false;
+  }
 </script>
+
+<svelte:window onclick={outside} onkeydown={(e) => e.key === 'Escape' && (open = false)} />
 
 <header class="bar">
   <div class="brand">
@@ -29,11 +45,70 @@
       </button>
     {/each}
   </nav>
-  <button type="button" class="btn account" onclick={() => (app.screen = 'settings')}>
-    <span class="avatar" class:on={connected}><Icon name="user" size={16} /></span>
-    <span>{connected ? t('account.connected') : t('account.disconnected')}</span>
-    {#if connected}<span class="dot glow"></span>{/if}
-  </button>
+  <div class="accounts" bind:this={box}>
+    <button
+      type="button"
+      class="btn account"
+      aria-haspopup="menu"
+      aria-expanded={open}
+      title={t('account.menu')}
+      onclick={() => (open = !open)}
+    >
+      <Avatar account={active} size={32} />
+      <span class="acct-name">{label}</span>
+      {#if connected}<span class="dot glow"></span>{/if}
+      <span class="chev" class:up={open}><Icon name="chevron-down" size={14} /></span>
+    </button>
+    {#if open}
+      <div class="menu glass" role="menu" aria-label={t('account.menu')}>
+        {#each accounts as account (account.id)}
+          <button
+            type="button"
+            class="item"
+            role="menuitemradio"
+            aria-checked={account.active}
+            onclick={() => {
+              open = false;
+              switchAccount(account.id);
+            }}
+          >
+            <Avatar {account} size={30} />
+            <span class="who">
+              <span class="nm">{accountName(account)}</span>
+              <span class="sub">
+                {account.connected ? t('account.doneMonth', { n: account.doneThisMonth }) : t('account.disconnected')}
+              </span>
+            </span>
+            {#if account.active}<span class="tick"><Icon name="check" size={16} /></span>{/if}
+          </button>
+        {/each}
+        <div class="sep"></div>
+        <button
+          type="button"
+          class="item action"
+          role="menuitem"
+          disabled={accounts.length >= MAX_ACCOUNTS}
+          onclick={() => {
+            open = false;
+            addAccount();
+          }}
+        >
+          <span class="ico"><Icon name="plus" size={16} /></span>{t('account.add')}
+        </button>
+        <button
+          type="button"
+          class="item action"
+          role="menuitem"
+          onclick={() => {
+            open = false;
+            showAccounts();
+          }}
+        >
+          <span class="ico"><Icon name="user" size={16} /></span>{t('account.manage')}
+        </button>
+      </div>
+    {/if}
+  </div>
 </header>
 
 <style>
@@ -86,23 +161,97 @@
     color: var(--ink);
     font-weight: 500;
   }
+  .accounts {
+    position: relative;
+  }
   .account {
     padding-left: 6px;
+    padding-right: 12px;
     font-size: 13px;
+    max-width: 280px;
   }
-  .avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
+  .acct-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .chev {
+    display: inline-flex;
+    color: var(--faint);
+    transition: transform 0.15s ease;
+  }
+  .chev.up {
+    transform: rotate(180deg);
+  }
+  .menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    z-index: 30;
+    width: 280px;
+    padding: 6px;
+    border-radius: 18px;
+    background: rgba(14, 17, 42, 0.97);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+    animation: igfadein 0.15s ease-out;
+  }
+  .item {
+    width: 100%;
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--ink);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .item:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .item:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+  .item[aria-checked='true'] {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .who {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .nm {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sub {
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .tick {
+    display: inline-flex;
+    color: var(--accent);
+  }
+  .sep {
+    height: 1px;
+    margin: 6px 4px;
     background: rgba(255, 255, 255, 0.08);
+  }
+  .action {
     color: var(--muted);
   }
-  .avatar.on {
-    background: color-mix(in srgb, var(--accent) 20%, transparent);
-    color: var(--accent);
+  .ico {
+    width: 30px;
+    display: inline-flex;
+    justify-content: center;
   }
   .glow {
     width: 6px;

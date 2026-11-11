@@ -78,7 +78,7 @@ const SCRIPT_TEMPLATE: &str = r#"(() => {
     u.searchParams.set('k', kind);
     u.searchParams.set('c', CODE);
     u.searchParams.set('t', TOKEN);
-    if (message) u.searchParams.set('m', String(message).slice(0, 200));
+    if (message) u.searchParams.set('m', String(message).slice(0, 600));
     window.location.assign(u.toString());
   };
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -86,7 +86,32 @@ const SCRIPT_TEMPLATE: &str = r#"(() => {
   const ended = () => ENDED.some((e) => text().includes(e));
   const root = () => document.getElementById('giveaway-app');
   const vm = () => { const el = root(); return el && el.__vue__ ? el.__vue__ : null; };
-  const loggedOut = () => typeof window.signup_url === 'string' && window.signup_url.length > 0;
+  const loggedOut = () => {
+    // `window.user.isAuthenticated` est présent sur toutes les pages du site.
+    if (window.user && typeof window.user.isAuthenticated === 'boolean') return !window.user.isAuthenticated;
+    return typeof window.signup_url === 'string' && window.signup_url.length > 0;
+  };
+  // Pseudo et photo du compte connecté, lus dans l'en-tête du site (`.login-container .user`).
+  const identity = () => {
+    const clean = (v) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '');
+    const u = window.user || {};
+    const box = document.querySelector('.login-container .user') || document.querySelector('.login-container');
+    const img = box ? box.querySelector('.avatar img, img.ig-avatar, img') : null;
+    const holder = box ? box.querySelector('.avatar') : null;
+    const link = document.querySelector('.login-container a[href*="/user/"]');
+    let avatar = img ? img.getAttribute('data-src') || img.currentSrc || img.getAttribute('src') || '' : '';
+    try { avatar = avatar ? new URL(avatar, location.href).href : ''; } catch (e) { avatar = ''; }
+    if (/\/themes\//.test(avatar) || /^data:/.test(avatar)) avatar = '';
+    let profile = '';
+    const href = link ? link.getAttribute('href') || '' : '';
+    const m = href.match(/\/user\/([^/?#]+)/);
+    if (m) { try { profile = decodeURIComponent(m[1]); } catch (e) { profile = m[1]; } }
+    const name = [u.username, u.nickname, u.name, u.custom_rname,
+      img && img.getAttribute('alt'), holder && holder.getAttribute('title'),
+      link && link.getAttribute('title'), profile].map(clean).find((v) => v && v.length <= 60) || '';
+    return JSON.stringify({ name, avatar, profile });
+  };
+  const connectedReport = () => (loggedOut() ? report('login') : report('connected', identity()));
   const participating = () => {
     const v = vm();
     if (v && v.isParticipating) return true;
@@ -102,7 +127,7 @@ const SCRIPT_TEMPLATE: &str = r#"(() => {
 
   (async () => {
     if (!/\/giveaway\//i.test(location.pathname)) {
-      if (MODE === 'probe') report(loggedOut() ? 'login' : 'connected');
+      if (MODE === 'probe') connectedReport();
       else report('ended', 'redirect');
       return;
     }
@@ -113,7 +138,7 @@ const SCRIPT_TEMPLATE: &str = r#"(() => {
       if (ended() || (root() && (window.giveaway || findButton()))) break;
       await sleep(250);
     }
-    if (MODE === 'probe') { report(loggedOut() ? 'login' : 'connected'); return; }
+    if (MODE === 'probe') { connectedReport(); return; }
     if (ended()) { report('ended'); return; }
     if (loggedOut()) { report('login'); return; }
     if (participating()) { report('already'); return; }
@@ -176,7 +201,7 @@ pub fn parse_report(url: &Url) -> Option<Report> {
             "k" => report.kind = value.into_owned(),
             "c" => report.code = value.into_owned(),
             "t" => report.token = value.into_owned(),
-            "m" => report.message = Some(value.chars().take(200).collect()),
+            "m" => report.message = Some(value.chars().take(600).collect()),
             _ => {}
         }
     }
@@ -211,14 +236,81 @@ pub fn reveal(window: &WebviewWindow) {
     let _ = window.set_focus();
 }
 
-/// Ouvre (ou réutilise) la fenêtre Instant Gaming sur `url`.
+/// Pseudo et photo lus sur la page Instant Gaming, vérifiés avant d'être gardés.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Identity {
+    pub name: Option<String>,
+    pub avatar_url: Option<Url>,
+    pub profile: Option<String>,
+}
+
+/// Hôtes autorisés pour la photo de profil (CDN d'Instant Gaming).
+pub fn avatar_host_allowed(host: &str) -> bool {
+    ["gaming-cdn.com", "instant-gaming.com"]
+        .iter()
+        .any(|h| host == *h || host.ends_with(&format!(".{h}")))
+}
+
+impl Identity {
+    pub fn parse(message: Option<&str>) -> Identity {
+        #[derive(serde::Deserialize, Default)]
+        #[serde(default)]
+        struct Raw {
+            name: String,
+            avatar: String,
+            profile: String,
+        }
+        let raw: Raw = message
+            .and_then(|m| serde_json::from_str(m).ok())
+            .unwrap_or_default();
+        let name: String = raw
+            .name
+            .chars()
+            .filter(|c| !c.is_control())
+            .collect::<String>()
+            .trim()
+            .chars()
+            .take(40)
+            .collect();
+        let avatar_url = Url::parse(&raw.avatar).ok().filter(|u| {
+            u.scheme() == "https" && u.host_str().map(avatar_host_allowed).unwrap_or(false)
+        });
+        let profile = Some(raw.profile.trim().to_string()).filter(|p| {
+            !p.is_empty()
+                && p.len() <= 60
+                && p != "."
+                && p != ".."
+                && p.chars()
+                    .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.')
+        });
+        Identity {
+            name: Some(name).filter(|n| !n.is_empty()),
+            avatar_url,
+            profile,
+        }
+    }
+}
+
+/// Ouvre (ou réutilise) la fenêtre Instant Gaming sur `url`, avec le profil du compte actif.
 pub fn open_ig(
     app: &AppHandle,
     url: &str,
     visibility: Visibility,
 ) -> Result<WebviewWindow, String> {
     let target = Url::parse(url).map_err(|e| e.to_string())?;
+    let state = app.state::<AppState>();
+    let (account, account_name) = {
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let active = store.accounts.active();
+        (active.id.clone(), active.name.clone())
+    };
     if let Some(window) = ig_window(app) {
+        let loaded = state.ig_account.lock().ok().and_then(|a| a.clone());
+        if loaded.as_deref() != Some(account.as_str()) {
+            // Fenêtre ouverte avec le profil d'un autre compte : elle doit être recréée.
+            let _ = window.destroy();
+            return Err("ig-closed".into());
+        }
         window.navigate(target).map_err(|e| e.to_string())?;
         match visibility {
             Visibility::Focus => reveal(&window),
@@ -233,14 +325,17 @@ pub fn open_ig(
         return Ok(window);
     }
 
-    let state = app.state::<AppState>();
     let nav_handle = app.clone();
     let load_handle = app.clone();
+    let title = match account_name {
+        Some(name) => format!("Instant Gaming · {name} · Giveaway IG"),
+        None => "Instant Gaming · Giveaway IG".to_string(),
+    };
     let window = WebviewWindowBuilder::new(app, IG_LABEL, WebviewUrl::External(target))
-        .title("Instant Gaming · Giveaway IG")
+        .title(&title)
         .inner_size(1100.0, 820.0)
         .min_inner_size(700.0, 500.0)
-        .data_directory(state.paths.webview.clone())
+        .data_directory(state.paths.profile_dir(&account))
         .additional_browser_args(BROWSER_ARGS)
         .visible(visibility != Visibility::Hidden)
         .focused(visibility == Visibility::Focus)
@@ -268,6 +363,9 @@ pub fn open_ig(
         })
         .build()
         .map_err(|e| e.to_string())?;
+    if let Ok(mut loaded) = state.ig_account.lock() {
+        *loaded = Some(account);
+    }
 
     let close_handle = app.clone();
     window.on_window_event(move |event| match event {
@@ -285,13 +383,26 @@ pub fn open_ig(
             }
         }
         WindowEvent::Destroyed => {
-            close_handle
-                .state::<AppState>()
-                .send_control(Control::IgClosed);
+            let state = close_handle.state::<AppState>();
+            if let Ok(mut loaded) = state.ig_account.lock() {
+                *loaded = None;
+            }
+            state.send_control(Control::IgClosed);
         }
         _ => {}
     });
     Ok(window)
+}
+
+/// Ferme la fenêtre Instant Gaming et attend qu'elle ait disparu (changement de compte).
+pub async fn close_ig_and_wait(app: &AppHandle) {
+    close_ig(app);
+    for _ in 0..60 {
+        if ig_window(app).is_none() {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
 }
 
 pub fn close_ig(app: &AppHandle) {
@@ -303,6 +414,35 @@ pub fn close_ig(app: &AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_identity_from_the_page() {
+        let id = Identity::parse(Some(
+            r#"{"name":"  Yaya\n ","avatar":"https://gaming-cdn.com/images/avatars/12281209-1618124808.jpg","profile":"gamer-09d6ee"}"#,
+        ));
+        assert_eq!(id.name.as_deref(), Some("Yaya"));
+        assert_eq!(
+            id.avatar_url.as_ref().map(|u| u.as_str()),
+            Some("https://gaming-cdn.com/images/avatars/12281209-1618124808.jpg")
+        );
+        assert_eq!(id.profile.as_deref(), Some("gamer-09d6ee"));
+        // Photo ailleurs que chez Instant Gaming, ou pas en https : ignorée.
+        let other = Identity::parse(Some(
+            r#"{"name":"x","avatar":"https://evil.example/a.jpg","profile":"../etc"}"#,
+        ));
+        assert!(other.avatar_url.is_none() && other.profile.is_none());
+        let accented = Identity::parse(Some(r#"{"name":"Michöko-99","profile":"Michöko-99"}"#));
+        assert_eq!(accented.profile.as_deref(), Some("Michöko-99"));
+        assert!(
+            Identity::parse(Some(r#"{"avatar":"http://gaming-cdn.com/a.jpg"}"#))
+                .avatar_url
+                .is_none()
+        );
+        assert_eq!(Identity::parse(Some("pas du json")), Identity::default());
+        assert_eq!(Identity::parse(None), Identity::default());
+        let long = Identity::parse(Some(&format!(r#"{{"name":"{}"}}"#, "a".repeat(80))));
+        assert_eq!(long.name.map(|n| n.len()), Some(40));
+    }
 
     #[test]
     fn script_contains_parameters() {

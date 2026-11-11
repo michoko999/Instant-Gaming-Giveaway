@@ -1,21 +1,21 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import Icon from '../lib/Icon.svelte';
   import MonthChart from '../lib/MonthChart.svelte';
   import { api, type HistoryEntry, type Outcome } from '../lib/api';
-  import { app, clockTime, fail, shortMessage, t, toast } from '../lib/state.svelte';
+  import { activeAccount, app, clockTime, fail, shortMessage, t, toast } from '../lib/state.svelte';
 
   let entries = $state<HistoryEntry[]>([]);
   let loaded = $state(false);
 
-  onMount(async () => {
-    try {
-      entries = await api.history(1000);
-    } catch (e) {
-      fail(e);
-    } finally {
-      loaded = true;
-    }
+  // Historique du compte actif : rechargé quand on change de compte.
+  const accountId = $derived(activeAccount()?.id);
+  $effect(() => {
+    void accountId;
+    api
+      .history(1000)
+      .then((list) => (entries = list))
+      .catch(fail)
+      .finally(() => (loaded = true));
   });
 
   const groups = $derived.by(() => {

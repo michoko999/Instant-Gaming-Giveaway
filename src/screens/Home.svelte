@@ -1,12 +1,12 @@
 <script lang="ts">
   import Icon from '../lib/Icon.svelte';
   import Ring from '../lib/Ring.svelte';
-  import { app, duration, minDelay, saveSettings, since, startSession, t, updateLists, SAFE_MIN_DELAY } from '../lib/state.svelte';
+  import { activeAccount, app, duration, minDelay, saveSettings, since, startSession, t, updateLists, SAFE_MIN_DELAY } from '../lib/state.svelte';
 
   const o = $derived(app.overview);
   const counts = $derived(o?.counts);
   const settings = $derived(o?.settings);
-  const connected = $derived(settings?.accountConnected ?? false);
+  const connected = $derived(activeAccount()?.connected ?? false);
   const queue = $derived(counts?.queue ?? 0);
   const busy = $derived(app.syncing || app.checking);
   const last = $derived(o?.meta.lastSession ?? null);

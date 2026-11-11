@@ -1,6 +1,8 @@
 //! Types de données partagés entre le cœur de l'application et l'interface.
 //! Tous les champs sont sérialisés en camelCase pour le TypeScript.
 
+use std::collections::BTreeMap;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -143,6 +145,8 @@ pub struct Settings {
     pub sync_on_start: bool,
     pub check_updates: bool,
     pub onboarding_done: bool,
+    /// Ancien réglage (un seul compte) : lu pour la migration vers `accounts.json`, plus écrit.
+    #[serde(skip_serializing)]
     pub account_connected: bool,
     pub sources: Vec<Source>,
 }
@@ -224,10 +228,14 @@ pub struct Giveaway {
     pub status: Status,
     #[serde(default)]
     pub checked_at: Option<DateTime<Utc>>,
-    #[serde(default)]
+    /// Anciens champs (avant le multi-compte) : repris dans `marks` au chargement.
+    #[serde(default, skip_serializing)]
     pub last_participation: Option<DateTime<Utc>>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub last_outcome: Option<Outcome>,
+    /// Dernière participation de chaque compte (identifiant du compte → marque).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub marks: BTreeMap<String, Mark>,
     #[serde(default)]
     pub sources: Vec<String>,
     pub added_at: DateTime<Utc>,
@@ -244,6 +252,150 @@ pub struct HistoryEntry {
     pub mode: SessionMode,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+    /// Compte concerné (absent dans l'historique d'avant le multi-compte : premier compte).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub account: Option<String>,
+}
+
+impl HistoryEntry {
+    pub fn account_id(&self) -> &str {
+        self.account.as_deref().unwrap_or(MAIN_ACCOUNT)
+    }
+}
+
+/// Ce qu'un compte a fait sur un concours.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Mark {
+    /// Dernière participation (réussie, déjà inscrit ou page ouverte en mode manuel).
+    pub participated_at: Option<DateTime<Utc>>,
+    /// Dernier résultat.
+    pub outcome: Option<Outcome>,
+}
+
+/// Concours tel que l'interface le voit, pour le compte actif.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GiveawayView {
+    pub code: String,
+    pub status: Status,
+    pub checked_at: Option<DateTime<Utc>>,
+    pub last_participation: Option<DateTime<Utc>>,
+    pub last_outcome: Option<Outcome>,
+    pub sources: Vec<String>,
+    pub added_at: DateTime<Utc>,
+    pub ignored: bool,
+}
+
+/// Identifiant du premier compte : son profil de navigation est le dossier `webview` d'origine.
+pub const MAIN_ACCOUNT: &str = "main";
+pub const MAX_ACCOUNTS: usize = 8;
+
+/// Un compte Instant Gaming : son propre profil de navigation, son suivi et son historique.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Account {
+    pub id: String,
+    /// Pseudo affiché sur Instant Gaming.
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Identifiant du profil public (`/user/<profil>`).
+    #[serde(default)]
+    pub profile: Option<String>,
+    /// Photo de profil enregistrée dans le dossier `avatars`.
+    #[serde(default)]
+    pub avatar_file: Option<String>,
+    #[serde(default)]
+    pub connected: bool,
+    /// Dernière lecture du pseudo et de la photo.
+    #[serde(default)]
+    pub identity_at: Option<DateTime<Utc>>,
+    pub added_at: DateTime<Utc>,
+}
+
+impl Account {
+    pub fn new(id: &str, now: DateTime<Utc>) -> Account {
+        Account {
+            id: id.to_string(),
+            name: None,
+            profile: None,
+            avatar_file: None,
+            connected: false,
+            identity_at: None,
+            added_at: now,
+        }
+    }
+
+    pub fn forget_identity(&mut self) {
+        self.connected = false;
+        self.name = None;
+        self.profile = None;
+        self.avatar_file = None;
+        self.identity_at = None;
+    }
+}
+
+/// Un identifiant de compte sert aussi de nom de dossier : lettres, chiffres et tirets.
+pub fn valid_account_id(id: &str) -> bool {
+    !id.is_empty() && id.len() <= 32 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Accounts {
+    pub active: String,
+    pub list: Vec<Account>,
+}
+
+impl Default for Accounts {
+    fn default() -> Self {
+        Accounts {
+            active: MAIN_ACCOUNT.into(),
+            list: vec![Account::new(MAIN_ACCOUNT, Utc::now())],
+        }
+    }
+}
+
+impl Accounts {
+    /// Toujours au moins un compte, identifiants valides et uniques, compte actif existant.
+    pub fn sanitize(&mut self) {
+        let mut seen = std::collections::HashSet::new();
+        self.list
+            .retain(|a| valid_account_id(&a.id) && seen.insert(a.id.clone()));
+        self.list.truncate(MAX_ACCOUNTS);
+        if self.list.is_empty() {
+            self.list.push(Account::new(MAIN_ACCOUNT, Utc::now()));
+        }
+        if !self.list.iter().any(|a| a.id == self.active) {
+            self.active = self.list[0].id.clone();
+        }
+    }
+
+    pub fn active(&self) -> &Account {
+        self.list
+            .iter()
+            .find(|a| a.id == self.active)
+            .unwrap_or(&self.list[0])
+    }
+
+    pub fn get_mut(&mut self, id: &str) -> Option<&mut Account> {
+        self.list.iter_mut().find(|a| a.id == id)
+    }
+}
+
+/// Compte tel que l'interface le voit.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountView {
+    pub id: String,
+    pub name: Option<String>,
+    /// Photo de profil en `data:` (l'interface n'affiche aucune image externe).
+    pub avatar: Option<String>,
+    pub profile_url: Option<String>,
+    pub connected: bool,
+    pub active: bool,
+    /// Concours différents déjà faits ce mois-ci par ce compte.
+    pub done_this_month: usize,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

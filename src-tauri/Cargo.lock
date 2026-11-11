@@ -1384,6 +1384,7 @@ dependencies = [
 name = "giveaway-ig"
 version = "2.0.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "futures",
  "reqwest 0.12.28",

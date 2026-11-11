@@ -59,7 +59,7 @@ On by default: at least 8 s between giveaways, a limited number per session, and
 <td valign="top">
 
 ### 📚 Lists that stay up to date
-Two community lists and two sites that share giveaways (jv-actu.com, ledemondujeu.com) are built in. Add your own: **Paste links**, a file, an online list or any web page.
+Two community lists and two sites that share giveaways (jv-actu.com, ledemondujeu.com) are built in. Add your own: **Paste links**, a file, an online list or any web page. Ended giveaways are re-checked every week and come back on their own.
 
 </td>
 </tr>
@@ -72,8 +72,8 @@ Instant Gaming accepts one entry per giveaway per month: the app skips the ones 
 </td>
 <td valign="top">
 
-### ♻️ Nothing is ever lost
-Ended giveaways stay in the list and are re-checked every week. If one comes back, it is picked up automatically.
+### 👥 Several accounts
+Add the accounts of the people at home: each one has its own sign-in, monthly tracking and history. The active account's photo and username show at the top right.
 
 </td>
 </tr>
@@ -171,6 +171,7 @@ If an antivirus still flags the app, please open an [issue](https://github.com/m
 | Address | Why |
 |:--|:--|
 | `instant-gaming.com` | check and enter giveaways |
+| `gaming-cdn.com` | download your account's profile picture |
 | `raw.githubusercontent.com`, `jv-actu.com`, `ledemondujeu.com` | download the giveaway lists (each source can be turned off) |
 | `api.github.com`, `github.com` | see whether a new version exists and download it (can be turned off) |
 
@@ -186,6 +187,12 @@ That is Instant Gaming's rule: one entry per giveaway per month. The app keeps t
 <summary><b>How do I add giveaways that are not in the lists?</b></summary>
 <br />
 In <b>Giveaways</b>, click <b>Paste links</b> and paste Instant Gaming links or codes (any surrounding text is ignored). You can also import a file or add an online list or a web page in <b>Settings → Giveaway sources</b>. To share them with everyone, open an <a href="https://github.com/michoko999/Instant-Gaming-Giveaway/issues">issue</a> and they will be added to the community list.
+</details>
+
+<details>
+<summary><b>Can I use several Instant Gaming accounts?</b></summary>
+<br />
+Yes: click your account at the top right, then <b>Add an account</b>, and sign in with it in the window that opens. Each account has its own sign-in, monthly tracking and history; the menu at the top right switches from one to another. Giveaway rules often allow only one entry per person, so use one account per person.
 </details>
 
 <details>

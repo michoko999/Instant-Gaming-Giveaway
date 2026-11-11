@@ -2,6 +2,7 @@
 import {
   api,
   events,
+  type Account,
   type CheckProgress,
   type CheckScope,
   type Lang,
@@ -49,6 +50,9 @@ export const app = $state({
   checking: false,
   update: null as UpdateInfo | null,
   toast: null as { text: string; tone: 'info' | 'error' } | null,
+  /** La fenêtre de connexion est ouverte : on attend « J'ai terminé ». */
+  loginPending: false,
+  verifying: false,
 });
 
 /** Traduit une clé, avec remplacement des {variables}. */
@@ -226,6 +230,115 @@ export async function setupListeners() {
   });
 }
 
+/** Compte actif (celui des sessions, du suivi du mois et de l'historique affichés). */
+export function activeAccount(): Account | undefined {
+  const list = app.overview?.accounts ?? [];
+  return list.find((a) => a.active) ?? list[0];
+}
+
+/** Pseudo du compte, ou « Compte 2 » tant qu'il n'est pas connu. */
+export function accountName(account: Account | undefined): string {
+  if (!account) return '';
+  if (account.name) return account.name;
+  const index = (app.overview?.accounts ?? []).findIndex((a) => a.id === account.id);
+  return t('account.unnamed', { n: index + 1 });
+}
+
+/** Ouvre la fenêtre de connexion du compte actif. */
+export async function openLogin() {
+  try {
+    await api.openLogin();
+    app.loginPending = true;
+    toast(t('onb.waiting'));
+  } catch (e) {
+    fail(e);
+  }
+}
+
+/** Vérifie la connexion du compte actif (et lit son pseudo et sa photo). */
+export async function verifyLogin(): Promise<boolean> {
+  if (app.verifying) return false;
+  app.verifying = true;
+  try {
+    const ok = await api.verifyLogin();
+    await refresh();
+    const account = activeAccount();
+    if (ok) {
+      app.loginPending = false;
+      toast(account?.name ? t('account.connectedAs', { name: account.name }) : t('account.connected'));
+    } else {
+      toast(t('onb.notConnected'), 'error');
+    }
+    return ok;
+  } catch (e) {
+    fail(e);
+    return false;
+  } finally {
+    app.verifying = false;
+  }
+}
+
+/** Relit en arrière-plan le pseudo et la photo d'un compte connecté qui n'en a pas encore. */
+function refreshIdentity() {
+  const account = activeAccount();
+  if (!account?.connected || account.name || app.overview?.sessionRunning) return;
+  api
+    .verifyLogin(true)
+    .then(() => refresh())
+    .catch(() => {});
+}
+
+/** Ouvre les paramètres sur la section des comptes. */
+export function showAccounts() {
+  app.screen = 'settings';
+  setTimeout(() => document.getElementById('accounts')?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60);
+}
+
+export async function addAccount() {
+  try {
+    await api.addAccount();
+    app.loginPending = false;
+    await refresh();
+    showAccounts();
+    await openLogin();
+  } catch (e) {
+    fail(e);
+  }
+}
+
+export async function switchAccount(id: string) {
+  if (activeAccount()?.id === id) return;
+  try {
+    await api.switchAccount(id);
+    app.loginPending = false;
+    await refresh();
+    toast(t('account.switched', { name: accountName(activeAccount()) }));
+    refreshIdentity();
+  } catch (e) {
+    fail(e);
+  }
+}
+
+export async function removeAccount(id: string) {
+  try {
+    await api.removeAccount(id);
+    app.loginPending = false;
+    await refresh();
+  } catch (e) {
+    fail(e);
+  }
+}
+
+export async function logoutAccount() {
+  try {
+    await api.logout();
+    app.loginPending = false;
+    await refresh();
+  } catch (e) {
+    fail(e);
+  }
+}
+
 export async function boot() {
   await setupListeners();
   const overview = await refresh();
@@ -238,6 +351,7 @@ export async function boot() {
     return;
   }
   app.screen = 'home';
+  refreshIdentity();
   if (overview.settings.checkUpdates) {
     api
       .checkUpdate()

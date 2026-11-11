@@ -62,7 +62,7 @@ Ativo por predefinição: pelo menos 8 s entre giveaways, um número limitado po
 <td valign="top">
 
 ### 📚 Listas sempre atualizadas
-Inclui duas listas da comunidade e dois sites que partilham giveaways (jv-actu.com, ledemondujeu.com). Junta as tuas: **Colar links**, um ficheiro, uma lista online ou qualquer página web.
+Inclui duas listas da comunidade e dois sites que partilham giveaways (jv-actu.com, ledemondujeu.com). Junta as tuas: **Colar links**, um ficheiro, uma lista online ou qualquer página web. Os giveaways terminados são verificados de novo todas as semanas e voltam sozinhos.
 
 </td>
 </tr>
@@ -75,8 +75,8 @@ A Instant Gaming aceita uma participação por giveaway e por mês: a aplicaçã
 </td>
 <td valign="top">
 
-### ♻️ Nada se perde
-Os giveaways terminados ficam na lista e são verificados de novo todas as semanas. Se algum voltar, é retomado automaticamente.
+### 👥 Várias contas
+Adiciona as contas das pessoas da tua casa: cada uma tem a sua sessão, o seu acompanhamento mensal e o seu histórico. A foto e o nome de utilizador da conta ativa aparecem no canto superior direito.
 
 </td>
 </tr>
@@ -174,6 +174,7 @@ Se mesmo assim um antivírus assinalar a aplicação, abre uma [issue](https://g
 | Endereço | Para quê |
 |:--|:--|
 | `instant-gaming.com` | verificar os giveaways e participar |
+| `gaming-cdn.com` | transferir a foto de perfil da tua conta |
 | `raw.githubusercontent.com`, `jv-actu.com`, `ledemondujeu.com` | transferir as listas de giveaways (cada fonte pode ser desativada) |
 | `api.github.com`, `github.com` | saber se há uma nova versão e transferi-la (pode ser desativado) |
 
@@ -189,6 +190,12 @@ Se mesmo assim um antivírus assinalar a aplicação, abre uma [issue](https://g
 <summary><b>Como adiciono giveaways que não estão nas listas?</b></summary>
 <br />
 Em <b>Giveaways</b>, clica em <b>Colar links</b> e cola links ou códigos da Instant Gaming (o texto à volta é ignorado). Também podes importar um ficheiro ou adicionar uma lista online ou uma página web em <b>Definições → Fontes de giveaways</b>. Para os partilhar com todos, abre uma <a href="https://github.com/michoko999/Instant-Gaming-Giveaway/issues">issue</a> e serão adicionados à lista comum.
+</details>
+
+<details>
+<summary><b>Posso usar várias contas da Instant Gaming?</b></summary>
+<br />
+Sim: clica na tua conta no canto superior direito, depois em <b>Adicionar uma conta</b>, e inicia sessão com ela na janela que se abre. Cada conta tem a sua própria sessão, o seu próprio acompanhamento mensal e o seu próprio histórico; o menu no canto superior direito permite passar de uma para outra. Os regulamentos dos giveaways permitem muitas vezes uma só participação por pessoa: usa uma conta por pessoa.
 </details>
 
 <details>

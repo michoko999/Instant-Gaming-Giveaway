@@ -32,7 +32,6 @@ export interface Settings {
   syncOnStart: boolean;
   checkUpdates: boolean;
   onboardingDone: boolean;
-  accountConnected: boolean;
   sources: Source[];
 }
 
@@ -82,7 +81,21 @@ export interface Meta {
   lastSession: SessionSummary | null;
 }
 
+/** Compte Instant Gaming (chacun a sa connexion, son suivi du mois et son historique). */
+export interface Account {
+  id: string;
+  /** Pseudo lu sur Instant Gaming. */
+  name: string | null;
+  /** Photo de profil en data: URL. */
+  avatar: string | null;
+  profileUrl: string | null;
+  connected: boolean;
+  active: boolean;
+  doneThisMonth: number;
+}
+
 export interface Overview {
+  accounts: Account[];
   settings: Settings;
   counts: Counts;
   stats: Stats;
@@ -206,8 +219,11 @@ export const api = {
   startSession: (mode?: SessionMode, codes?: string[]) => invoke<number>('start_session', { mode, codes }),
   sessionControl: (action: SessionAction) => invoke<void>('session_control', { action }),
   openLogin: () => invoke<void>('open_login'),
-  verifyLogin: () => invoke<boolean>('verify_login'),
+  verifyLogin: (silent = false) => invoke<boolean>('verify_login', { silent }),
   logout: () => invoke<void>('logout'),
+  addAccount: () => invoke<string>('add_account'),
+  switchAccount: (id: string) => invoke<void>('switch_account', { id }),
+  removeAccount: (id: string) => invoke<void>('remove_account', { id }),
   openGiveaway: (code: string) => invoke<void>('open_giveaway', { code }),
   showIgWindow: () => invoke<boolean>('show_ig_window'),
   openExternal: (url: string) => invoke<void>('open_external', { url }),

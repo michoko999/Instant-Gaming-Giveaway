@@ -62,7 +62,7 @@ Standardmäßig aktiv: mindestens 8 s zwischen zwei Giveaways, eine begrenzte An
 <td valign="top">
 
 ### 📚 Immer aktuelle Listen
-Zwei Community-Listen und zwei Seiten, die Giveaways teilen (jv-actu.com, ledemondujeu.com), sind eingebaut. Füge eigene hinzu: **Links einfügen**, eine Datei, eine Online-Liste oder eine beliebige Webseite.
+Zwei Community-Listen und zwei Seiten, die Giveaways teilen (jv-actu.com, ledemondujeu.com), sind eingebaut. Füge eigene hinzu: **Links einfügen**, eine Datei, eine Online-Liste oder eine beliebige Webseite. Beendete Giveaways werden jede Woche erneut geprüft und kommen von selbst zurück.
 
 </td>
 </tr>
@@ -75,8 +75,8 @@ Instant Gaming erlaubt eine Teilnahme pro Giveaway und Monat: Die App übersprin
 </td>
 <td valign="top">
 
-### ♻️ Nichts geht verloren
-Beendete Giveaways bleiben in der Liste und werden jede Woche erneut geprüft. Kommt eines zurück, wird es automatisch wieder aufgenommen.
+### 👥 Mehrere Konten
+Füge die Konten der Personen in deinem Haushalt hinzu: Jedes hat seine eigene Anmeldung, seine Monatsübersicht und seinen Verlauf. Foto und Benutzername des aktiven Kontos erscheinen oben rechts.
 
 </td>
 </tr>
@@ -174,6 +174,7 @@ Meldet ein Virenscanner die App trotzdem, öffne bitte ein [Issue](https://githu
 | Adresse | Wozu |
 |:--|:--|
 | `instant-gaming.com` | Giveaways prüfen und teilnehmen |
+| `gaming-cdn.com` | das Profilbild deines Kontos laden |
 | `raw.githubusercontent.com`, `jv-actu.com`, `ledemondujeu.com` | Giveaway-Listen laden (jede Quelle lässt sich abschalten) |
 | `api.github.com`, `github.com` | prüfen, ob es eine neue Version gibt, und sie herunterladen (abschaltbar) |
 
@@ -189,6 +190,12 @@ Das ist die Regel von Instant Gaming: eine Teilnahme pro Giveaway und Monat. Die
 <summary><b>Wie füge ich Giveaways hinzu, die nicht in den Listen stehen?</b></summary>
 <br />
 Klicke unter <b>Giveaways</b> auf <b>Links einfügen</b> und füge Instant-Gaming-Links oder Codes ein (der Text drumherum wird ignoriert). Du kannst auch eine Datei importieren oder unter <b>Einstellungen → Giveaway-Quellen</b> eine Online-Liste oder Webseite hinzufügen. Um sie mit allen zu teilen, öffne ein <a href="https://github.com/michoko999/Instant-Gaming-Giveaway/issues">Issue</a>, dann landen sie in der gemeinsamen Liste.
+</details>
+
+<details>
+<summary><b>Kann ich mehrere Instant-Gaming-Konten nutzen?</b></summary>
+<br />
+Ja: Klicke oben rechts auf dein Konto, dann auf <b>Konto hinzufügen</b>, und melde dich im sich öffnenden Fenster damit an. Jedes Konto hat seine eigene Anmeldung, seine eigene Monatsübersicht und seinen eigenen Verlauf; über das Menü oben rechts wechselst du zwischen ihnen. Giveaway-Regeln erlauben oft nur eine Teilnahme pro Person: Nutze ein Konto pro Person.
 </details>
 
 <details>

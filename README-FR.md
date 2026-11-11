@@ -59,7 +59,7 @@ Activé par défaut : au moins 8 s entre deux concours, un nombre limité par se
 <td valign="top">
 
 ### 📚 Des listes toujours à jour
-Deux listes communautaires et deux sites qui partagent des concours (jv-actu.com, ledemondujeu.com) sont intégrés. Ajoute les tiennes : **Coller des liens**, un fichier, une liste en ligne ou n'importe quelle page web.
+Deux listes communautaires et deux sites qui partagent des concours (jv-actu.com, ledemondujeu.com) sont intégrés. Ajoute les tiennes : **Coller des liens**, un fichier, une liste en ligne ou n'importe quelle page web. Les concours terminés sont revérifiés chaque semaine et reviennent tout seuls.
 
 </td>
 </tr>
@@ -72,8 +72,8 @@ Instant Gaming accepte une participation par concours et par mois : l'applicatio
 </td>
 <td valign="top">
 
-### ♻️ Rien ne se perd
-Les concours terminés restent dans la liste et sont revérifiés chaque semaine. Si l'un d'eux revient, il est repris automatiquement.
+### 👥 Plusieurs comptes
+Ajoute les comptes des personnes de ton foyer : chacun a sa connexion, son suivi du mois et son historique. La photo et le pseudo du compte actif s'affichent en haut à droite.
 
 </td>
 </tr>
@@ -171,6 +171,7 @@ Si un antivirus signale quand même l'application, ouvre une [issue](https://git
 | Adresse | Pourquoi |
 |:--|:--|
 | `instant-gaming.com` | vérifier les concours et y participer |
+| `gaming-cdn.com` | télécharger la photo de profil de ton compte |
 | `raw.githubusercontent.com`, `jv-actu.com`, `ledemondujeu.com` | télécharger les listes de concours (chaque source peut être désactivée) |
 | `api.github.com`, `github.com` | savoir si une nouvelle version existe et la télécharger (désactivable) |
 
@@ -186,6 +187,12 @@ C'est la règle d'Instant Gaming : une participation par concours et par mois. L
 <summary><b>Comment ajouter des concours qui ne sont pas dans les listes ?</b></summary>
 <br />
 Dans <b>Concours</b>, clique sur <b>Coller des liens</b> et colle des liens ou des codes Instant Gaming (le texte autour est ignoré). Tu peux aussi importer un fichier ou ajouter une liste en ligne ou une page web dans <b>Paramètres → Sources de concours</b>. Pour en faire profiter tout le monde, ouvre une <a href="https://github.com/michoko999/Instant-Gaming-Giveaway/issues">issue</a> et ils seront ajoutés à la liste commune.
+</details>
+
+<details>
+<summary><b>Je peux utiliser plusieurs comptes Instant Gaming ?</b></summary>
+<br />
+Oui : clique sur ton compte en haut à droite, puis sur <b>Ajouter un compte</b>, et connecte-toi avec dans la fenêtre qui s'ouvre. Chaque compte a sa propre connexion, son propre suivi du mois et son propre historique ; le menu en haut à droite permet de passer de l'un à l'autre. Le règlement des concours n'autorise souvent qu'une participation par personne : utilise un compte par personne.
 </details>
 
 <details>

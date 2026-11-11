@@ -110,8 +110,14 @@ pub fn start(
     }
     let total = codes.len();
     let handle = app.clone();
+    // La session reste attachée au compte actif au moment du lancement.
+    let account = state
+        .store
+        .lock()
+        .map(|s| s.active_account())
+        .unwrap_or_else(|_| crate::model::MAIN_ACCOUNT.to_string());
     tauri::async_runtime::spawn(async move {
-        run(handle, mode, codes, limited, ctl_rx, rep_rx).await;
+        run(handle, mode, codes, limited, account, ctl_rx, rep_rx).await;
     });
     Ok(total)
 }
@@ -182,6 +188,7 @@ async fn run(
     mode: SessionMode,
     codes: Vec<String>,
     limited: usize,
+    account: String,
     mut ctl: UnboundedReceiver<Control>,
     mut rep: UnboundedReceiver<Report>,
 ) {
@@ -364,7 +371,7 @@ async fn run(
                 }
             };
 
-        record(&app, &code, outcome, mode, message.clone(), i);
+        record(&app, &account, &code, outcome, mode, message.clone(), i);
         match outcome {
             Outcome::Participated => summary.participated += 1,
             Outcome::Already => summary.already += 1,
@@ -455,6 +462,7 @@ async fn run(
 
 fn record(
     app: &AppHandle,
+    account: &str,
     code: &str,
     outcome: Outcome,
     mode: SessionMode,
@@ -465,7 +473,7 @@ fn record(
     let Ok(mut store) = state.store.lock() else {
         return;
     };
-    store.record(code, outcome, mode, message, Utc::now());
+    store.record(account, code, outcome, mode, message, Utc::now());
     let _ = store.save_giveaways();
     if index % 5 == 4 {
         let _ = store.save_history();

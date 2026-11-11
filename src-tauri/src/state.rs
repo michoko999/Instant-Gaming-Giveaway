@@ -17,6 +17,10 @@ use crate::store::Store;
 pub const PORTABLE_DIR: &str = "GiveawayIG-data";
 /// Fichier témoin : le profil de navigation sera effacé au prochain démarrage (déconnexion).
 const RESET_MARKER: &str = "reset-webview";
+/// Dossiers à supprimer au prochain démarrage (profils de comptes retirés encore occupés).
+const PENDING_DELETE: &str = "pending-delete.txt";
+/// Profils de navigation des comptes ajoutés (le premier compte garde `webview`).
+const PROFILES_DIR: &str = "profiles";
 
 const USER_AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
@@ -59,12 +63,52 @@ impl AppPaths {
         let _ = std::fs::write(self.data.join(RESET_MARKER), b"1");
     }
 
-    /// Efface le profil de navigation si une déconnexion a été demandée.
+    /// Efface le profil de navigation si une déconnexion a été demandée, et les profils des
+    /// comptes retirés qui n'avaient pas pu être supprimés.
     pub fn apply_pending_reset(&self) {
         let marker = self.data.join(RESET_MARKER);
         if marker.exists() {
             let _ = std::fs::remove_dir_all(&self.webview);
             let _ = std::fs::remove_file(marker);
+        }
+        let list = self.data.join(PENDING_DELETE);
+        if let Ok(text) = std::fs::read_to_string(&list) {
+            let profiles = self.data.join(PROFILES_DIR);
+            for name in text
+                .lines()
+                .map(str::trim)
+                .filter(|l| crate::model::valid_account_id(l))
+            {
+                let _ = std::fs::remove_dir_all(profiles.join(name));
+            }
+            let _ = std::fs::remove_file(list);
+        }
+    }
+
+    /// Profil de navigation d'un compte (cookies de connexion Instant Gaming).
+    pub fn profile_dir(&self, account: &str) -> PathBuf {
+        if account == crate::model::MAIN_ACCOUNT {
+            self.webview.clone()
+        } else {
+            self.data.join(PROFILES_DIR).join(account)
+        }
+    }
+
+    /// Supprime le profil d'un compte ajouté ; s'il est encore utilisé, au prochain démarrage.
+    pub fn delete_profile(&self, account: &str) {
+        if account == crate::model::MAIN_ACCOUNT || !crate::model::valid_account_id(account) {
+            return;
+        }
+        let dir = self.profile_dir(account);
+        if dir.exists() && std::fs::remove_dir_all(&dir).is_err() {
+            use std::io::Write;
+            if let Ok(mut file) = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(self.data.join(PENDING_DELETE))
+            {
+                let _ = writeln!(file, "{account}");
+            }
         }
     }
 }
@@ -100,6 +144,10 @@ pub struct AppState {
     pub ig_script: Mutex<Option<String>>,
     /// Fermer la fenêtre Instant Gaming la cache au lieu de la fermer (session automatique en cours).
     pub ig_hide_on_close: AtomicBool,
+    /// Compte dont le profil est chargé dans la fenêtre Instant Gaming ouverte.
+    pub ig_account: Mutex<Option<String>>,
+    /// Vérification de connexion en cours (fenêtre Instant Gaming occupée).
+    pub probing: AtomicBool,
 }
 
 impl AppState {
@@ -113,6 +161,8 @@ impl AppState {
             reports: Mutex::new(None),
             ig_script: Mutex::new(None),
             ig_hide_on_close: AtomicBool::new(false),
+            ig_account: Mutex::new(None),
+            probing: AtomicBool::new(false),
         }
     }
 

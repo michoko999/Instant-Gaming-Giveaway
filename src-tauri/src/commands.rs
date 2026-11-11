@@ -28,6 +28,7 @@ const FALLBACK_GIVEAWAY: &str = "INSTANTGAMING";
 #[serde(rename_all = "camelCase")]
 pub struct Overview {
     settings: Settings,
+    accounts: Vec<AccountView>,
     counts: Counts,
     stats: Stats,
     meta: Meta,
@@ -100,9 +101,10 @@ fn lock_err<T>(_: T) -> String {
 
 #[tauri::command]
 pub fn get_overview(state: State<'_, AppState>) -> CmdResult<Overview> {
-    let store = state.store.lock().map_err(lock_err)?;
+    let mut store = state.store.lock().map_err(lock_err)?;
     let now = Utc::now();
     Ok(Overview {
+        accounts: store.account_views(now),
         settings: store.settings.clone(),
         counts: store.counts(now),
         stats: store.stats(now),
@@ -275,8 +277,8 @@ pub async fn check_giveaways(app: AppHandle, scope: String) -> CmdResult<CheckRe
 }
 
 #[tauri::command]
-pub fn list_giveaways(state: State<'_, AppState>) -> CmdResult<Vec<Giveaway>> {
-    Ok(state.store.lock().map_err(lock_err)?.giveaways.clone())
+pub fn list_giveaways(state: State<'_, AppState>) -> CmdResult<Vec<GiveawayView>> {
+    Ok(state.store.lock().map_err(lock_err)?.giveaway_views())
 }
 
 #[tauri::command]
@@ -340,8 +342,7 @@ pub fn get_history(
     limit: Option<usize>,
 ) -> CmdResult<Vec<HistoryEntry>> {
     let store = state.store.lock().map_err(lock_err)?;
-    let limit = limit.unwrap_or(500);
-    Ok(store.history.iter().rev().take(limit).cloned().collect())
+    Ok(store.active_history(limit.unwrap_or(500)))
 }
 
 #[tauri::command]
@@ -366,7 +367,8 @@ pub async fn export_history(app: AppHandle) -> CmdResult<Option<String>> {
     let csv = {
         let store = state.store.lock().map_err(lock_err)?;
         let mut out = String::from("date,code,outcome,mode,message\n");
-        for h in &store.history {
+        let active = store.active_account();
+        for h in store.history.iter().filter(|h| h.account_id() == active) {
             let mode = match h.mode {
                 SessionMode::Auto => "auto",
                 SessionMode::Manual => "manual",
@@ -399,6 +401,9 @@ pub async fn start_session(
     codes: Option<Vec<String>>,
 ) -> CmdResult<usize> {
     let state = app.state::<AppState>();
+    if state.probing.load(Ordering::SeqCst) {
+        return Err("probing".into());
+    }
     let (mode, queue, limited) = {
         let store = state.store.lock().map_err(lock_err)?;
         let mode = mode.unwrap_or(store.settings.mode);
@@ -431,6 +436,18 @@ pub fn session_control(state: State<'_, AppState>, action: String) -> CmdResult<
     }
 }
 
+/// Ouvre la fenêtre Instant Gaming ; si elle était ouverte avec le profil d'un autre compte,
+/// elle est refermée puis recréée.
+async fn open_ig_for_active(app: &AppHandle, url: &str, visibility: Visibility) -> CmdResult<()> {
+    match automation::open_ig(app, url, visibility) {
+        Err(e) if e == "ig-closed" => {
+            automation::close_ig_and_wait(app).await;
+            automation::open_ig(app, url, visibility).map(|_| ())
+        }
+        other => other.map(|_| ()),
+    }
+}
+
 #[tauri::command]
 pub async fn open_login(app: AppHandle) -> CmdResult<()> {
     let state = app.state::<AppState>();
@@ -445,22 +462,124 @@ pub async fn open_login(app: AppHandle) -> CmdResult<()> {
         .language
         .clone();
     state.set_script(None);
-    automation::open_ig(
+    open_ig_for_active(
         &app,
         &format!("https://www.instant-gaming.com/{lang}/"),
         Visibility::Focus,
-    )?;
-    Ok(())
+    )
+    .await
 }
 
-/// Ouvre une page de concours dans la fenêtre Instant Gaming et vérifie si le compte est connecté.
-#[tauri::command]
-pub async fn verify_login(app: AppHandle) -> CmdResult<bool> {
-    let state = app.state::<AppState>();
-    if state.session_running() {
-        return Err("session-running".into());
+/// Garde-fou : une seule vérification de connexion à la fois, jamais pendant une session.
+struct ProbeGuard<'a>(&'a AppState);
+
+impl<'a> ProbeGuard<'a> {
+    fn acquire(state: &'a AppState) -> CmdResult<Self> {
+        if state.session_running() {
+            return Err("session-running".into());
+        }
+        if state.probing.swap(true, Ordering::SeqCst) {
+            return Err("probing".into());
+        }
+        Ok(ProbeGuard(state))
     }
-    let (lang, code) = {
+}
+
+impl Drop for ProbeGuard<'_> {
+    fn drop(&mut self) {
+        self.0.probing.store(false, Ordering::SeqCst);
+    }
+}
+
+const MAX_AVATAR_BYTES: usize = 1024 * 1024;
+
+/// Télécharge la photo de profil (CDN d'Instant Gaming uniquement, image de 1 Mo au plus).
+async fn download_avatar(state: &AppState, url: &url::Url) -> Option<(Vec<u8>, &'static str)> {
+    let response = state
+        .client
+        .get(url.as_str())
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .ok()?
+        .error_for_status()
+        .ok()?;
+    if !response
+        .url()
+        .host_str()
+        .map(automation::avatar_host_allowed)
+        .unwrap_or(false)
+    {
+        return None;
+    }
+    let mime = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let ext = match mime.split(';').next().unwrap_or("").trim() {
+        "image/jpeg" | "image/jpg" => "jpg",
+        "image/png" => "png",
+        "image/webp" => "webp",
+        "image/gif" => "gif",
+        _ => return None,
+    };
+    if response.content_length().unwrap_or(0) as usize > MAX_AVATAR_BYTES {
+        return None;
+    }
+    let bytes = response.bytes().await.ok()?;
+    if bytes.is_empty() || bytes.len() > MAX_AVATAR_BYTES {
+        return None;
+    }
+    Some((bytes.to_vec(), ext))
+}
+
+/// Enregistre le pseudo et la photo lus sur le site pour un compte.
+async fn save_identity(state: &AppState, account: &str, identity: automation::Identity) {
+    let avatar = match &identity.avatar_url {
+        Some(url) => download_avatar(state, url).await,
+        None => None,
+    };
+    let avatars = state.paths.data.join(crate::store::AVATARS_DIR);
+    let avatar_file = avatar.and_then(|(bytes, ext)| {
+        let _ = std::fs::create_dir_all(&avatars);
+        for old in ["jpg", "png", "webp", "gif"] {
+            let _ = std::fs::remove_file(avatars.join(format!("{account}.{old}")));
+        }
+        let file = format!("{account}.{ext}");
+        std::fs::write(avatars.join(&file), bytes)
+            .ok()
+            .map(|_| file)
+    });
+    let Ok(mut store) = state.store.lock() else {
+        return;
+    };
+    if let Some(a) = store.accounts.get_mut(account) {
+        a.connected = true;
+        a.identity_at = Some(Utc::now());
+        if identity.name.is_some() {
+            a.name = identity.name;
+        }
+        if identity.profile.is_some() {
+            a.profile = identity.profile;
+        }
+        if avatar_file.is_some() {
+            a.avatar_file = avatar_file;
+        }
+    }
+    store.forget_avatar(account);
+    let _ = store.save_accounts();
+}
+
+/// Vérifie si le compte actif est connecté et lit son pseudo et sa photo.
+/// `silent` : fenêtre cachée, pour rafraîchir le pseudo et la photo sans déranger.
+#[tauri::command]
+pub async fn verify_login(app: AppHandle, silent: Option<bool>) -> CmdResult<bool> {
+    let state = app.state::<AppState>();
+    let _guard = ProbeGuard::acquire(&state)?;
+    let silent = silent.unwrap_or(false);
+    let (lang, code, account) = {
         let store = state.store.lock().map_err(lock_err)?;
         let code = store
             .giveaways
@@ -468,7 +587,11 @@ pub async fn verify_login(app: AppHandle) -> CmdResult<bool> {
             .find(|g| g.status == Status::Active)
             .map(|g| g.code.clone())
             .unwrap_or_else(|| FALLBACK_GIVEAWAY.to_string());
-        (store.settings.language.clone(), code)
+        (
+            store.settings.language.clone(),
+            code,
+            store.active_account(),
+        )
     };
     let token = automation::new_token();
     let (tx, mut rx) = unbounded_channel();
@@ -480,16 +603,22 @@ pub async fn verify_login(app: AppHandle) -> CmdResult<bool> {
         &code,
         &token,
     )));
-    let opened = automation::open_ig(&app, &giveaway_url(&lang, &code), Visibility::Keep);
-    let result = match opened {
+    let visibility = if silent && automation::ig_window(&app).is_none() {
+        Visibility::Hidden
+    } else {
+        Visibility::Keep
+    };
+    let opened = open_ig_for_active(&app, &giveaway_url(&lang, &code), visibility).await;
+    let result: CmdResult<Option<automation::Identity>> = match opened {
         Err(e) => Err(e),
         Ok(_) => {
             // Attend la réponse de la page, en abandonnant si l'utilisateur ferme la fenêtre.
-            let mut outcome: CmdResult<bool> = Err("no-response".into());
+            let mut outcome = Err("no-response".to_string());
             for _ in 0..60 {
                 match tokio::time::timeout(Duration::from_millis(500), rx.recv()).await {
                     Ok(Some(report)) if report.token == token => {
-                        outcome = Ok(report.kind == "connected");
+                        outcome = Ok((report.kind == "connected")
+                            .then(|| automation::Identity::parse(report.message.as_deref())));
                         break;
                     }
                     Ok(Some(_)) => {}
@@ -509,36 +638,133 @@ pub async fn verify_login(app: AppHandle) -> CmdResult<bool> {
     if let Ok(mut reports) = state.reports.lock() {
         *reports = None;
     }
-    if let Ok(connected) = result {
-        let mut store = state.store.lock().map_err(lock_err)?;
-        store.settings.account_connected = connected;
-        let _ = store.save_settings();
-        if connected {
+    match result {
+        Ok(Some(identity)) => {
+            save_identity(&state, &account, identity).await;
             automation::close_ig(&app);
-        } else if let Some(window) = automation::ig_window(&app) {
-            automation::reveal(&window);
+            Ok(true)
+        }
+        Ok(None) => {
+            {
+                let mut store = state.store.lock().map_err(lock_err)?;
+                if let Some(a) = store.accounts.get_mut(&account) {
+                    a.connected = false;
+                }
+                let _ = store.save_accounts();
+            }
+            if silent {
+                automation::close_ig(&app);
+            } else if let Some(window) = automation::ig_window(&app) {
+                automation::reveal(&window);
+            }
+            Ok(false)
+        }
+        Err(e) => {
+            if silent {
+                automation::close_ig(&app);
+            }
+            Err(e)
         }
     }
-    result
+}
+
+/// Déconnecte un compte : efface son profil de navigation, son pseudo et sa photo.
+fn forget_login(app: &AppHandle, state: &AppState, account: &str) {
+    if account == MAIN_ACCOUNT {
+        // Le premier compte partage le profil de la fenêtre principale.
+        let cleared = app
+            .get_webview_window("main")
+            .map(|w| w.clear_all_browsing_data().is_ok())
+            .unwrap_or(false);
+        if !cleared {
+            state.paths.request_webview_reset();
+        }
+    } else {
+        state.paths.delete_profile(account);
+    }
+    let avatars = state.paths.data.join(crate::store::AVATARS_DIR);
+    for ext in ["jpg", "png", "webp", "gif"] {
+        let _ = std::fs::remove_file(avatars.join(format!("{account}.{ext}")));
+    }
 }
 
 #[tauri::command]
 pub async fn logout(app: AppHandle) -> CmdResult<()> {
     let state = app.state::<AppState>();
-    if state.session_running() {
-        return Err("session-running".into());
-    }
-    automation::close_ig(&app);
-    let cleared = app
-        .get_webview_window("main")
-        .map(|w| w.clear_all_browsing_data().is_ok())
-        .unwrap_or(false);
-    if !cleared {
-        state.paths.request_webview_reset();
-    }
+    let _guard = ProbeGuard::acquire(&state)?;
+    automation::close_ig_and_wait(&app).await;
+    let account = state.store.lock().map_err(lock_err)?.active_account();
+    forget_login(&app, &state, &account);
     let mut store = state.store.lock().map_err(lock_err)?;
-    store.settings.account_connected = false;
-    store.save_settings().map_err(|e| e.to_string())
+    if let Some(a) = store.accounts.get_mut(&account) {
+        a.forget_identity();
+    }
+    store.forget_avatar(&account);
+    store.save_accounts().map_err(|e| e.to_string())
+}
+
+/// Ajoute un compte (vide) et le rend actif : il reste à s'y connecter.
+#[tauri::command]
+pub async fn add_account(app: AppHandle) -> CmdResult<String> {
+    let state = app.state::<AppState>();
+    let _guard = ProbeGuard::acquire(&state)?;
+    let id = {
+        let mut store = state.store.lock().map_err(lock_err)?;
+        if store.accounts.list.len() >= MAX_ACCOUNTS {
+            return Err("too-many-accounts".into());
+        }
+        let mut id = format!("c{}", &automation::new_token()[..8]);
+        while store.accounts.list.iter().any(|a| a.id == id) {
+            id = format!("c{}", &automation::new_token()[..8]);
+        }
+        store.accounts.list.push(Account::new(&id, Utc::now()));
+        store.accounts.active = id.clone();
+        store.save_accounts().map_err(|e| e.to_string())?;
+        id
+    };
+    automation::close_ig_and_wait(&app).await;
+    Ok(id)
+}
+
+#[tauri::command]
+pub async fn switch_account(app: AppHandle, id: String) -> CmdResult<()> {
+    let state = app.state::<AppState>();
+    let _guard = ProbeGuard::acquire(&state)?;
+    {
+        let mut store = state.store.lock().map_err(lock_err)?;
+        if !store.accounts.list.iter().any(|a| a.id == id) {
+            return Err("unknown-account".into());
+        }
+        store.accounts.active = id;
+        store.save_accounts().map_err(|e| e.to_string())?;
+    }
+    automation::close_ig_and_wait(&app).await;
+    Ok(())
+}
+
+/// Retire un compte : sa connexion, son suivi et son historique sont effacés de l'application.
+#[tauri::command]
+pub async fn remove_account(app: AppHandle, id: String) -> CmdResult<()> {
+    let state = app.state::<AppState>();
+    let _guard = ProbeGuard::acquire(&state)?;
+    {
+        let store = state.store.lock().map_err(lock_err)?;
+        if !store.accounts.list.iter().any(|a| a.id == id) {
+            return Err("unknown-account".into());
+        }
+        if store.accounts.list.len() <= 1 {
+            return Err("last-account".into());
+        }
+    }
+    automation::close_ig_and_wait(&app).await;
+    forget_login(&app, &state, &id);
+    let mut store = state.store.lock().map_err(lock_err)?;
+    store.accounts.list.retain(|a| a.id != id);
+    store.forget_account_data(&id);
+    store.accounts.sanitize();
+    store.save_accounts().map_err(|e| e.to_string())?;
+    store.save_giveaways().map_err(|e| e.to_string())?;
+    store.save_history().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
