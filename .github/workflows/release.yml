@@ -1,8 +1,8 @@
 name: Release
 
 # Deux façons de publier une version :
-# - « Run workflow » dans l'onglet Actions (branche main) : compile, crée le tag vX.Y.Z à partir de la
-#   version de package.json et publie la release (case « brouillon » pour la relire avant) ;
+# - « Run workflow » dans l'onglet Actions (branche main) : compile Windows et Linux, crée le tag vX.Y.Z
+#   à partir de la version de package.json et publie la release (case « brouillon » pour la relire avant) ;
 # - pousser un tag v2.x.y : crée un brouillon de release (à relire, et plus tard à signer).
 on:
   push:
@@ -20,24 +20,18 @@ permissions:
   attestations: write
 
 jobs:
-  release:
-    name: Release Windows
+  prepare:
+    name: Version
     # Lancement manuel : uniquement depuis main.
     if: github.event_name == 'push' || github.ref == 'refs/heads/main'
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-
-      - uses: dtolnay/rust-toolchain@stable
-
       - name: Version de l'application
         id: version
-        shell: bash
         run: |
           app="v$(node -p "require('./package.json').version")"
           conf="v$(node -p "require('./src-tauri/tauri.conf.json').version")"
@@ -50,7 +44,6 @@ jobs:
 
       - name: Aucune release existante pour cette version
         if: github.event_name == 'workflow_dispatch'
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -59,51 +52,139 @@ jobs:
             exit 1
           fi
 
+  windows:
+    name: Exécutable Windows
+    needs: prepare
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
       - run: npm ci
 
       - name: Compilation
         run: npx tauri build --no-bundle
 
-      - name: Exécutable portable et empreinte SHA-256
-        id: hash
+      - name: Exécutable portable
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
           Copy-Item src-tauri/target/release/giveaway-ig.exe out/GiveawayIG.exe
-          $hash = (Get-FileHash out/GiveawayIG.exe -Algorithm SHA256).Hash.ToLower()
-          "$hash  GiveawayIG.exe" | Out-File -Encoding ascii out/SHA256SUMS.txt
-          "sha256=$hash" >> $env:GITHUB_OUTPUT
 
-      # Preuve publique que l'exécutable a été compilé ici, depuis ce commit.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-windows
+          path: out/GiveawayIG.exe
+          retention-days: 7
+
+  linux:
+    name: AppImage Linux
+    needs: prepare
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Dépendances système (Tauri et AppImage)
+        timeout-minutes: 10
+        run: |
+          APT="-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
+          sudo apt-get $APT update
+          sudo apt-get $APT install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev patchelf file libfuse2
+
+      - run: npm ci
+
+      - name: Compilation (AppImage)
+        run: npx tauri build
+
+      - name: AppImage
+        run: |
+          mkdir -p out
+          cp src-tauri/target/release/bundle/appimage/*.AppImage out/GiveawayIG-x86_64.AppImage
+          chmod +x out/GiveawayIG-x86_64.AppImage
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-linux
+          path: out/GiveawayIG-x86_64.AppImage
+          retention-days: 7
+
+  publish:
+    name: Publication
+    needs: [prepare, windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: out
+
+      - name: Empreintes SHA-256
+        id: hash
+        run: |
+          cd out
+          chmod +x GiveawayIG-x86_64.AppImage
+          sha256sum GiveawayIG.exe GiveawayIG-x86_64.AppImage > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          echo "windows=$(sha256sum GiveawayIG.exe | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "linux=$(sha256sum GiveawayIG-x86_64.AppImage | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      # Preuve publique que les deux fichiers ont été compilés ici, depuis ce commit.
       - uses: actions/attest-build-provenance@v4
         with:
-          subject-path: out/GiveawayIG.exe
+          subject-path: |
+            out/GiveawayIG.exe
+            out/GiveawayIG-x86_64.AppImage
 
       - uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
+          tag_name: ${{ needs.prepare.outputs.tag }}
           target_commitish: ${{ github.sha }}
           draft: ${{ github.event_name == 'push' || inputs.draft }}
           make_latest: ${{ github.event_name == 'workflow_dispatch' && !inputs.draft }}
-          name: Giveaway IG ${{ steps.version.outputs.tag }}
+          name: Giveaway IG ${{ needs.prepare.outputs.tag }}
           files: |
             out/GiveawayIG.exe
+            out/GiveawayIG-x86_64.AppImage
             out/SHA256SUMS.txt
           body: |
-            ## Giveaway IG ${{ steps.version.outputs.tag }}
+            ## Giveaway IG ${{ needs.prepare.outputs.tag }}
 
-            **Télécharge `GiveawayIG.exe`** : c'est une application portable, sans installation.
-            Range-la dans un dossier à toi (par exemple `Documents\GiveawayIG`) : tes réglages seront enregistrés à côté, dans `GiveawayIG-data`.
+            | | Fichier · File |
+            |:--|:--|
+            | 🪟 **Windows 10 / 11** | `GiveawayIG.exe` |
+            | 🐧 **Linux** (x86_64) | `GiveawayIG-x86_64.AppImage` |
 
-            **Download `GiveawayIG.exe`**: it is a portable app, no installation needed.
-            Put it in a folder of your own (for example `Documents\GiveawayIG`): your settings are saved next to it, in `GiveawayIG-data`.
+            **Windows** : application portable, sans installation. Range `GiveawayIG.exe` dans un dossier à toi (par exemple `Documents\GiveawayIG`) : tes réglages seront enregistrés à côté, dans `GiveawayIG-data`.
+            *Portable app, no installation: put `GiveawayIG.exe` in a folder of your own; your settings are saved next to it, in `GiveawayIG-data`.*
 
-            ### Vérifier le fichier · Check the file
-            - SHA-256 : `${{ steps.hash.outputs.sha256 }}`
-            - Provenance : `gh attestation verify GiveawayIG.exe --repo ${{ github.repository }}`
+            **Linux** : rends le fichier exécutable puis lance-le · *make the file executable, then run it*:
+            ```bash
+            chmod +x GiveawayIG-x86_64.AppImage
+            ./GiveawayIG-x86_64.AppImage
+            ```
+            Les réglages sont enregistrés à côté du fichier, dans `GiveawayIG-data` · *settings are saved next to the file.*
 
-            Windows 10 / 11 + Microsoft Edge WebView2 (déjà présent sur Windows 11 et Windows 10 à jour · built into Windows 11 and up-to-date Windows 10).
+            ### Vérifier les fichiers · Check the files
+            - `GiveawayIG.exe` : `${{ steps.hash.outputs.windows }}`
+            - `GiveawayIG-x86_64.AppImage` : `${{ steps.hash.outputs.linux }}`
+            - Provenance : `gh attestation verify <fichier> --repo ${{ github.repository }}`
+
+            Windows : Microsoft Edge WebView2 (déjà présent sur Windows 11 et Windows 10 à jour · *built into Windows 11 and up-to-date Windows 10*).
 
             Documentation : [README](https://github.com/${{ github.repository }}#readme) (7 langues · 7 languages).
 
-            Projet open source, non affilié à Instant Gaming · Open source project, not affiliated with Instant Gaming.
+            Projet open source, non affilié à Instant Gaming · *Open source project, not affiliated with Instant Gaming.*
