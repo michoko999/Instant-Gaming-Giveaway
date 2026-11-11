@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import Icon from '../lib/Icon.svelte';
   import { api, type Giveaway } from '../lib/api';
   import { app, fail, since, t, toast, updateLists } from '../lib/state.svelte';
@@ -64,6 +64,46 @@
     }
   }
 
+  // Coller des liens : un panneau qui s'ouvre sous l'en-tête.
+  let pasting = $state(false);
+  let pasted = $state('');
+  let adding = $state(false);
+  let pasteBox = $state<HTMLTextAreaElement>();
+
+  async function openPaste() {
+    pasting = !pasting;
+    if (pasting) {
+      await tick();
+      pasteBox?.focus();
+    }
+  }
+
+  async function addPasted() {
+    if (!pasted.trim() || adding) return;
+    adding = true;
+    try {
+      const report = await api.addLinks(pasted);
+      if (report.found === 0) {
+        toast(t('gw.pasteNone'));
+        return;
+      }
+      toast(t('gw.pasteAdded', { added: report.added, found: report.found }));
+      pasted = '';
+      pasting = false;
+      await load();
+      if (report.added > 0) await updateLists('unknown', false);
+    } catch (e) {
+      fail(e);
+    } finally {
+      adding = false;
+    }
+  }
+
+  function pasteKeys(event: KeyboardEvent) {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) addPasted();
+    if (event.key === 'Escape') pasting = false;
+  }
+
   async function importFile() {
     try {
       const report = await api.importList();
@@ -86,13 +126,39 @@
       <button type="button" class="btn btn-sm" onclick={() => updateLists('unknown')} disabled={busy}>
         <span class:spin={app.syncing} class="flex"><Icon name="download" size={16} /></span>{t('gw.sync')}
       </button>
-      <button type="button" class="btn btn-sm" onclick={() => updateLists('all', false)} disabled={busy}>
+      <button type="button" class="btn btn-sm" onclick={() => updateLists('full', false)} disabled={busy}>
         <span class:spin={app.checking} class="flex"><Icon name="refresh" size={16} /></span>
         {#if app.checking && app.check}{t('home.checking', { done: app.check.done, total: app.check.total })}{:else}{t('gw.check')}{/if}
       </button>
+      <button type="button" class="btn btn-sm" aria-expanded={pasting} onclick={openPaste}><Icon name="plus" size={16} />{t('gw.paste')}</button>
       <button type="button" class="btn btn-sm" onclick={importFile} disabled={busy}><Icon name="upload" size={16} />{t('gw.import')}</button>
     </div>
   </header>
+
+  {#if pasting}
+    <section class="paste glass">
+      <label class="label" for="paste-box">{t('gw.paste')}</label>
+      <textarea
+        id="paste-box"
+        class="field box mono"
+        rows="6"
+        spellcheck="false"
+        placeholder={t('gw.pastePlaceholder')}
+        bind:this={pasteBox}
+        bind:value={pasted}
+        onkeydown={pasteKeys}
+      ></textarea>
+      <div class="paste-foot">
+        <span class="faint small">{t('gw.pasteHint')}</span>
+        <div class="row">
+          <button type="button" class="btn btn-sm btn-quiet" onclick={() => (pasting = false)}>{t('common.close')}</button>
+          <button type="button" class="btn btn-sm btn-primary" onclick={addPasted} disabled={!pasted.trim() || adding}>
+            <Icon name="plus" size={14} />{t('gw.pasteAdd')}
+          </button>
+        </div>
+      </div>
+    </section>
+  {/if}
 
   <div class="tools">
     <label class="search">
@@ -159,6 +225,29 @@
   }
   .flex {
     display: inline-flex;
+  }
+  .paste {
+    animation: igfadein 0.25s ease-out;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px 20px;
+    border-radius: 24px;
+  }
+  .box {
+    height: auto;
+    min-height: 120px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.6;
+    resize: vertical;
+  }
+  .paste-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
   }
   .tools {
     display: flex;

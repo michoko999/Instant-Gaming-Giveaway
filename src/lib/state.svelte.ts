@@ -3,6 +3,7 @@ import {
   api,
   events,
   type CheckProgress,
+  type CheckScope,
   type Lang,
   type LogEntry,
   type Overview,
@@ -149,7 +150,7 @@ export async function saveSettings(patch: Partial<Settings>) {
 }
 
 /** Récupère les listes puis vérifie les concours (tous, ou seulement les nouveaux). */
-export async function updateLists(scope: 'all' | 'unknown' = 'unknown', withSync = true) {
+export async function updateLists(scope: CheckScope = 'unknown', withSync = true) {
   if (app.syncing || app.checking) return;
   try {
     if (withSync) {

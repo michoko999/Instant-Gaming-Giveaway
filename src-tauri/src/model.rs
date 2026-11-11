@@ -296,6 +296,16 @@ pub struct Stats {
     pub this_month: usize,
     /// Concours différents déjà faits ce mois-ci.
     pub done_this_month: usize,
+    /// Participations des 12 derniers mois (heure locale), du plus ancien au mois en cours.
+    pub monthly: Vec<MonthCount>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MonthCount {
+    /// « AAAA-MM »
+    pub month: String,
+    pub count: usize,
 }
 
 #[cfg(test)]

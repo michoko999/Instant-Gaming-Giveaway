@@ -16,6 +16,9 @@ export interface Source {
   builtin: boolean;
 }
 
+/** unknown : jamais vérifiés · all : actifs, inconnus et terminés pas revus depuis 7 jours · full : tous. */
+export type CheckScope = 'unknown' | 'all' | 'full';
+
 export interface Settings {
   language: Lang;
   mode: SessionMode;
@@ -42,10 +45,18 @@ export interface Counts {
   queue: number;
 }
 
+export interface MonthCount {
+  /** « AAAA-MM » */
+  month: string;
+  count: number;
+}
+
 export interface Stats {
   totalParticipations: number;
   thisMonth: number;
   doneThisMonth: number;
+  /** 12 derniers mois, du plus ancien au mois en cours. */
+  monthly: MonthCount[];
 }
 
 export interface SessionSummary {
@@ -168,6 +179,13 @@ export interface UpdateInfo {
   latest: string | null;
   available: boolean;
   url: string | null;
+  /** La mise à jour peut être installée depuis l'application. */
+  canInstall: boolean;
+}
+
+export interface UpdateProgress {
+  received: number;
+  total: number;
 }
 
 export type SessionAction = 'pause' | 'resume' | 'stop' | 'skip' | 'next';
@@ -178,10 +196,11 @@ export const api = {
   addSource: (name: string, url: string) => invoke<Settings>('add_source', { name, url }),
   removeSource: (id: string) => invoke<Settings>('remove_source', { id }),
   sync: () => invoke<SyncReport>('sync_lists'),
-  check: (scope: 'all' | 'unknown') => invoke<CheckReport>('check_giveaways', { scope }),
+  check: (scope: CheckScope) => invoke<CheckReport>('check_giveaways', { scope }),
   giveaways: () => invoke<Giveaway[]>('list_giveaways'),
   setIgnored: (code: string, ignored: boolean) => invoke<void>('set_ignored', { code, ignored }),
   importList: () => invoke<ImportReport | null>('import_list'),
+  addLinks: (text: string) => invoke<ImportReport>('add_links', { text }),
   history: (limit?: number) => invoke<HistoryEntry[]>('get_history', { limit }),
   exportHistory: () => invoke<string | null>('export_history'),
   startSession: (mode?: SessionMode, codes?: string[]) => invoke<number>('start_session', { mode, codes }),
@@ -194,6 +213,7 @@ export const api = {
   openExternal: (url: string) => invoke<void>('open_external', { url }),
   openDataDir: () => invoke<void>('open_data_dir'),
   checkUpdate: () => invoke<UpdateInfo>('check_update'),
+  installUpdate: () => invoke<void>('install_update'),
 };
 
 export const events = {
@@ -204,6 +224,8 @@ export const events = {
     listen<SessionSummary>('session-finished', (e) => cb(e.payload)),
   checkProgress: (cb: (c: CheckProgress) => void): Promise<UnlistenFn> =>
     listen<CheckProgress>('check-progress', (e) => cb(e.payload)),
+  updateProgress: (cb: (p: UpdateProgress) => void): Promise<UnlistenFn> =>
+    listen<UpdateProgress>('update-progress', (e) => cb(e.payload)),
 };
 
 export const REPO_URL = 'https://github.com/michoko999/Instant-Gaming-Giveaway';

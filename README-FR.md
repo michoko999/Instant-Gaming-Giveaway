@@ -22,12 +22,13 @@ Giveaway IG est une application Windows **portable** (aucune installation) qui r
   - Si ton compte est déconnecté, la session se met en pause le temps que tu te reconnectes.
   - La fenêtre Instant Gaming reste cachée pendant qu'elle travaille ; « Voir la page en direct » l'affiche quand tu veux (la fermer la cache simplement).
 - **Mode manuel** : les concours s'ouvrent un par un ; tu cliques sur « Participer » et l'application passe au suivant dès qu'elle détecte ta participation.
-- **Listes toujours à jour** : deux listes communautaires et deux pages web qui partagent des concours (jv-actu.com, ledemondujeu.com) sont intégrées, plus tes propres fichiers (CSV, TXT, JSON), listes en ligne ou n'importe quelle page web avec des liens de concours Instant Gaming.
+- **Listes toujours à jour** : deux listes communautaires et deux pages web qui partagent des concours (jv-actu.com, ledemondujeu.com) sont intégrées, plus tes propres fichiers (CSV, TXT, JSON), listes en ligne ou n'importe quelle page web avec des liens de concours Instant Gaming. Tu peux aussi coller des liens directement dans l'écran Concours.
 - **Vérification rapide** : des centaines de concours testés en parallèle en moins d'une minute.
-- **Suivi du mois** : chaque concours accepte une participation par mois ; l'application passe ceux déjà faits ce mois-ci et garde un historique exportable en CSV.
+- **Rien n'est jamais supprimé** : les concours terminés restent dans la liste et sont revérifiés chaque semaine ; s'ils redeviennent valides, ils reviennent automatiquement.
+- **Suivi du mois** : chaque concours accepte une participation par mois ; l'application passe ceux déjà faits ce mois-ci et garde un historique exportable en CSV, avec un graphique des participations par mois.
 - **7 langues** : français, English, Español, Deutsch, Português, Italiano, Polski.
 - **Portable** : tes réglages et ta session sont rangés dans un dossier `GiveawayIG-data` à côté de l'exécutable.
-- **Mises à jour** : l'application te prévient quand une nouvelle version sort (elle ne télécharge rien toute seule).
+- **Mises à jour en un clic** : l'application te prévient quand une nouvelle version sort ; un clic sur « Mettre à jour » télécharge le nouvel exécutable depuis la release GitHub, vérifie son empreinte SHA-256 et le remplace. Rien ne se fait sans ton clic.
 
 ## 📥 Télécharger
 

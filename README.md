@@ -22,12 +22,13 @@ Giveaway IG is a **portable** Windows app (no installer) that fetches the Instan
   - If your account gets signed out, the session pauses until you sign in again.
   - The Instant Gaming window stays hidden while it works; “Watch the page live” shows it whenever you want (closing it just hides it again).
 - **Manual mode**: giveaways open one by one; click “Participate” and the app moves on as soon as it notices.
-- **Always up-to-date lists**: two built-in community lists and two web pages that share giveaways (jv-actu.com, ledemondujeu.com), plus your own files (CSV, TXT, JSON), online lists or any web page with Instant Gaming giveaway links.
+- **Always up-to-date lists**: two built-in community lists and two web pages that share giveaways (jv-actu.com, ledemondujeu.com), plus your own files (CSV, TXT, JSON), online lists or any web page with Instant Gaming giveaway links. You can also paste links straight into the Giveaways screen.
 - **Fast checking**: hundreds of giveaways tested in parallel in under a minute.
-- **Monthly tracking**: each giveaway accepts one entry per month; the app skips the ones already done this month and keeps a history you can export as CSV.
+- **Monthly tracking**: each giveaway accepts one entry per month; the app skips the ones already done this month and keeps a history you can export as CSV, with a chart of your entries per month.
 - **7 languages**: Français, English, Español, Deutsch, Português, Italiano, Polski.
 - **Portable**: settings and session live in a `GiveawayIG-data` folder next to the executable.
-- **Updates**: the app tells you when a new version is out (it never downloads anything by itself).
+- **Nothing is ever deleted**: ended giveaways stay in the list and are re-checked every week; if one comes back, it is picked up automatically.
+- **One-click updates**: the app tells you when a new version is out; clicking “Update” downloads the new executable from the GitHub release, checks its SHA-256 fingerprint and replaces it. Nothing happens without your click.
 
 ## 📥 Download
 

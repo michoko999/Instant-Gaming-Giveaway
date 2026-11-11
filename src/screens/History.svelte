@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Icon from '../lib/Icon.svelte';
+  import MonthChart from '../lib/MonthChart.svelte';
   import { api, type HistoryEntry, type Outcome } from '../lib/api';
   import { app, clockTime, fail, shortMessage, t, toast } from '../lib/state.svelte';
 
@@ -64,6 +65,10 @@
     <div class="glass"><dd class="serif">{stats?.thisMonth ?? 0}</dd><dt>{t('hist.month')}</dt></div>
     <div class="glass"><dd class="serif">{app.overview?.counts.queue ?? 0}</dd><dt>{t('hist.remaining')}</dt></div>
   </dl>
+
+  {#if stats && stats.totalParticipations > 0}
+    <MonthChart data={stats.monthly} />
+  {/if}
 
   {#if loaded && entries.length === 0}
     <p class="faint empty">{t('hist.empty')}</p>

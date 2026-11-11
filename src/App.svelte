@@ -3,7 +3,7 @@
   import Sky from './lib/Sky.svelte';
   import TopBar from './lib/TopBar.svelte';
   import Icon from './lib/Icon.svelte';
-  import { api } from './lib/api';
+  import { api, events } from './lib/api';
   import { app, boot, fail, t } from './lib/state.svelte';
   import Onboarding from './screens/Onboarding.svelte';
   import Home from './screens/Home.svelte';
@@ -18,6 +18,28 @@
   });
 
   const withNav = $derived(['home', 'giveaways', 'history', 'settings'].includes(app.screen));
+
+  // Mise à jour en un clic : téléchargement vérifié, remplacement de l'exe puis redémarrage.
+  let installing = $state(false);
+  let percent = $state(0);
+
+  async function installUpdate() {
+    if (installing) return;
+    installing = true;
+    percent = 0;
+    const stop = await events.updateProgress((p) => {
+      if (p.total > 0) percent = Math.min(100, Math.floor((p.received * 100) / p.total));
+    });
+    try {
+      // En cas de succès, l'application se ferme et la nouvelle version démarre.
+      await api.installUpdate();
+    } catch (e) {
+      fail(e);
+      installing = false;
+    } finally {
+      stop();
+    }
+  }
 </script>
 
 <Sky animated={app.overview?.settings.skyAnimation ?? true} />
@@ -28,13 +50,29 @@
     {#if app.update}
       <div class="update glass">
         <Icon name="sparkle" size={16} />
-        <span>{t('update.available', { version: app.update.latest ?? '' })}</span>
-        <button type="button" class="btn btn-sm" onclick={() => app.update?.url && api.openExternal(app.update.url).catch(fail)}>
-          {t('update.open')}
-        </button>
-        <button type="button" class="btn btn-sm btn-quiet icon-btn" aria-label={t('common.close')} onclick={() => (app.update = null)}>
-          <Icon name="close" size={14} />
-        </button>
+        {#if installing}
+          <span aria-live="polite">
+            {percent < 100 ? t('update.downloading', { version: app.update.latest ?? '', percent }) : t('update.restarting')}
+          </span>
+          <span class="meter" aria-hidden="true"><span style:width="{percent}%"></span></span>
+        {:else}
+          <span>{t('update.available', { version: app.update.latest ?? '' })}</span>
+          {#if app.update.canInstall}
+            <button type="button" class="btn btn-sm btn-quiet" onclick={() => app.update?.url && api.openExternal(app.update.url).catch(fail)}>
+              {t('update.notes')}
+            </button>
+            <button type="button" class="btn btn-sm btn-primary" onclick={installUpdate}>
+              <Icon name="download" size={14} />{t('update.install')}
+            </button>
+          {:else}
+            <button type="button" class="btn btn-sm" onclick={() => app.update?.url && api.openExternal(app.update.url).catch(fail)}>
+              {t('update.open')}
+            </button>
+          {/if}
+          <button type="button" class="btn btn-sm btn-quiet icon-btn" aria-label={t('common.close')} onclick={() => (app.update = null)}>
+            <Icon name="close" size={14} />
+          </button>
+        {/if}
       </div>
     {/if}
   {/if}
@@ -100,9 +138,24 @@
     color: var(--accent);
     font-size: 14px;
   }
-  .update span {
+  .update > span:not(.meter) {
     flex: 1;
     color: var(--ink);
+  }
+  .meter {
+    flex: 0 0 180px;
+    height: 6px;
+    margin-right: 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+  }
+  .meter span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+    transition: width 0.2s ease;
   }
   .toast {
     position: fixed;

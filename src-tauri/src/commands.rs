@@ -205,11 +205,16 @@ pub async fn sync_lists(app: AppHandle) -> CmdResult<SyncReport> {
     })
 }
 
-/// `scope` : "all" (actifs et inconnus) ou "unknown" (seulement ceux jamais vérifiés).
+/// Un concours terminé est revérifié au plus tard après ce délai : s'il revient, on le reprend.
+const RECHECK_ENDED_DAYS: i64 = 7;
+
+/// `scope` : "unknown" (jamais vérifiés), "full" (tous, terminés compris) ou "all"
+/// (actifs, inconnus, et terminés pas revérifiés depuis une semaine).
 #[tauri::command]
 pub async fn check_giveaways(app: AppHandle, scope: String) -> CmdResult<CheckReport> {
     let state = app.state::<AppState>();
     let _busy = BusyGuard::acquire(&state)?;
+    let stale_before = Utc::now() - chrono::Duration::days(RECHECK_ENDED_DAYS);
     let (lang, codes) = {
         let store = state.store.lock().map_err(lock_err)?;
         let codes: Vec<String> = store
@@ -218,7 +223,8 @@ pub async fn check_giveaways(app: AppHandle, scope: String) -> CmdResult<CheckRe
             .filter(|g| !g.ignored)
             .filter(|g| match scope.as_str() {
                 "unknown" => g.status == Status::Unknown,
-                _ => g.status != Status::Ended,
+                "full" => true,
+                _ => g.status != Status::Ended || g.checked_at.map_or(true, |at| at < stale_before),
             })
             .map(|g| g.code.clone())
             .collect();
@@ -301,11 +307,20 @@ pub async fn import_list(app: AppHandle) -> CmdResult<Option<ImportReport>> {
         return Err("file-too-large".into());
     }
     let text = std::fs::read_to_string(&path).map_err(|_| "file-unreadable".to_string())?;
-    let codes = match sources::parse_alive_json(&text) {
-        Ok((alive, _)) => alive,
-        Err(_) => sources::parse_list(&text),
-    };
     let state = app.state::<AppState>();
+    add_codes(&state, sources::parse_file(&text)).map(Some)
+}
+
+/// Ajoute des liens (ou des codes) collés dans l'application.
+#[tauri::command]
+pub fn add_links(state: State<'_, AppState>, text: String) -> CmdResult<ImportReport> {
+    if text.len() as u64 > MAX_IMPORT_BYTES {
+        return Err("file-too-large".into());
+    }
+    add_codes(&state, sources::parse_pasted(&text))
+}
+
+fn add_codes(state: &AppState, codes: Vec<String>) -> CmdResult<ImportReport> {
     let mut store = state.store.lock().map_err(lock_err)?;
     let pairs: Vec<(String, String)> = codes
         .iter()
@@ -313,10 +328,10 @@ pub async fn import_list(app: AppHandle) -> CmdResult<Option<ImportReport>> {
         .collect();
     let added = store.merge_codes(&pairs, Utc::now());
     store.save_giveaways().map_err(|e| e.to_string())?;
-    Ok(Some(ImportReport {
+    Ok(ImportReport {
         found: codes.len(),
         added,
-    }))
+    })
 }
 
 #[tauri::command]
@@ -588,4 +603,48 @@ pub fn open_data_dir(app: AppHandle) -> CmdResult<()> {
 pub async fn check_update(app: AppHandle) -> CmdResult<UpdateInfo> {
     let state = app.state::<AppState>();
     update::check(&state.client).await
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UpdateProgress {
+    received: u64,
+    total: u64,
+}
+
+/// Télécharge, vérifie et installe la nouvelle version, puis relance l'application.
+#[tauri::command]
+pub async fn install_update(app: AppHandle) -> CmdResult<()> {
+    let state = app.state::<AppState>();
+    if state.session_running() {
+        return Err("update-busy".into());
+    }
+    let _busy = BusyGuard::acquire(&state)?;
+    let release = update::latest(&state.client)
+        .await
+        .map_err(|_| "update-download".to_string())?;
+    if !update::info(&release).can_install {
+        return Err("update-none".into());
+    }
+    let emitter = app.clone();
+    let mut last_percent = u64::MAX;
+    let bytes = update::download(&state.client, &release, |received, total| {
+        // Un événement par pourcent suffit.
+        let percent = (received * 100).checked_div(total).unwrap_or(0);
+        if percent != last_percent {
+            last_percent = percent;
+            let _ = emitter.emit("update-progress", UpdateProgress { received, total });
+        }
+    })
+    .await?;
+    let exe = std::env::current_exe().map_err(|_| "update-write".to_string())?;
+    update::replace(&exe, &bytes)?;
+    let mut relaunch = std::process::Command::new(&exe);
+    if let Some(dir) = exe.parent() {
+        relaunch.current_dir(dir);
+    }
+    relaunch.spawn().map_err(|_| "update-restart".to_string())?;
+    automation::close_ig(&app);
+    app.exit(0);
+    Ok(())
 }

@@ -123,15 +123,59 @@ pub fn scan_page(text: &str) -> Vec<String> {
             continue;
         }
         let offset = decoded.len() - rest.len() + "giveaway/".len();
-        let code: String = decoded[offset..]
+        let mut code: String = decoded[offset..]
             .chars()
             .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
             .collect();
+        // Deux liens collés sans espace : « …/retroraiderhttps://… ».
+        if decoded[offset + code.len()..].starts_with("://") {
+            for scheme in ["https", "http"] {
+                if code.len() > scheme.len() && code.to_ascii_lowercase().ends_with(scheme) {
+                    code.truncate(code.len() - scheme.len());
+                    break;
+                }
+            }
+        }
         if !code.is_empty() && code.len() <= 64 && seen.insert(code.to_ascii_uppercase()) {
             codes.push(code);
         }
     }
     codes
+}
+
+/// Retire les doublons (sans tenir compte de la casse) en gardant l'ordre.
+pub fn dedupe(codes: Vec<String>) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    codes
+        .into_iter()
+        .filter(|c| seen.insert(c.to_ascii_uppercase()))
+        .collect()
+}
+
+/// Lit un texte collé par l'utilisateur. S'il contient des liens Instant Gaming, on ne garde
+/// qu'eux (le reste du texte est ignoré) ; sinon, chaque mot est pris comme un code.
+pub fn parse_pasted(text: &str) -> Vec<String> {
+    let links = scan_page(text);
+    if !links.is_empty() {
+        return links;
+    }
+    dedupe(
+        text.split(|c: char| c.is_whitespace() || c == ',' || c == ';')
+            .filter_map(extract_code)
+            .collect(),
+    )
+}
+
+/// Lit un fichier importé : JSON communautaire, liste (CSV, texte) ou page enregistrée.
+pub fn parse_file(text: &str) -> Vec<String> {
+    match parse_alive_json(text) {
+        Ok((alive, _)) => alive,
+        Err(_) => {
+            let mut codes = parse_list(text);
+            codes.extend(scan_page(text));
+            dedupe(codes)
+        }
+    }
 }
 
 /// Lit le JSON communautaire { "alive": [...], "dead": [...] }.
@@ -311,6 +355,40 @@ mod tests {
             guess_kind("https://www.ledemondujeu.com/jeux-concours-instant-gaming.com.html"),
             SourceKind::Page
         );
+    }
+
+    #[test]
+    fn reads_pasted_text() {
+        let message = "Ajoute-les :\nhttps://www.instant-gaming.com/pt/giveaway/retroraider\n\
+            https://www.instant-gaming.com/en/giveaway/goldpeaking et https://www.instant-gaming.com/pl/giveaway/HIGHSTYLED\n\
+            https://www.instant-gaming.com/en/giveaway/GOLDPEAKING merci";
+        assert_eq!(
+            parse_pasted(message),
+            vec!["retroraider", "goldpeaking", "HIGHSTYLED"]
+        );
+        assert_eq!(
+            parse_pasted("BOBLENNON, pivi;  TOMBIE\nbobLennon"),
+            vec!["BOBLENNON", "pivi", "TOMBIE"]
+        );
+        assert_eq!(
+            parse_pasted("https://www.instant-gaming.com/pt/giveaway/retroraiderhttps://www.instant-gaming.com/en/giveaway/goldpeaking"),
+            vec!["retroraider", "goldpeaking"]
+        );
+        assert!(parse_pasted("   ").is_empty());
+        assert!(parse_pasted("https://example.com/fr/giveaway/X").is_empty());
+    }
+
+    #[test]
+    fn reads_imported_files() {
+        assert_eq!(
+            parse_file("url\nhttps://www.instant-gaming.com/fr/giveaway/PIVI\nTOMBIE\n"),
+            vec!["PIVI", "TOMBIE"]
+        );
+        assert_eq!(
+            parse_file("<p>Voir <a href=\"https://www.instant-gaming.com/fr/giveaway/SEGMENT\">ici</a></p>"),
+            vec!["SEGMENT"]
+        );
+        assert_eq!(parse_file(r#"{"alive":["A1"],"dead":["B2"]}"#), vec!["A1"]);
     }
 
     #[test]

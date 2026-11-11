@@ -109,12 +109,14 @@ impl Store {
         added
     }
 
-    /// Marque comme terminés les concours signalés morts par une source.
+    /// Marque comme terminés les concours signalés morts par une source, seulement s'ils n'ont
+    /// jamais été vérifiés : ce que l'application a constaté elle-même passe avant la liste
+    /// (un concours revenu à la vie reste actif).
     pub fn mark_ended(&mut self, codes: &[String], now: DateTime<Utc>) -> usize {
         let dead: BTreeSet<String> = codes.iter().map(|c| c.to_ascii_uppercase()).collect();
         let mut changed = 0;
         for g in &mut self.giveaways {
-            if g.status != Status::Ended && dead.contains(&g.code.to_ascii_uppercase()) {
+            if g.status == Status::Unknown && dead.contains(&g.code.to_ascii_uppercase()) {
                 g.status = Status::Ended;
                 g.checked_at = Some(now);
                 changed += 1;
@@ -217,6 +219,8 @@ impl Store {
     pub fn stats(&self, now: DateTime<Utc>) -> Stats {
         let mut stats = Stats::default();
         let mut done: HashSet<String> = HashSet::new();
+        let months = last_months(now, 12);
+        let mut monthly = vec![0usize; months.len()];
         for h in &self.history {
             let this_month = same_month(h.at, now);
             if h.outcome.counts_as_participation() {
@@ -224,14 +228,42 @@ impl Store {
                 if this_month {
                     stats.this_month += 1;
                 }
+                let local = h.at.with_timezone(&Local);
+                if let Some(i) = months
+                    .iter()
+                    .position(|&m| m == (local.year(), local.month()))
+                {
+                    monthly[i] += 1;
+                }
             }
             if this_month && h.outcome.done_for_month() {
                 done.insert(h.code.to_ascii_uppercase());
             }
         }
         stats.done_this_month = done.len();
+        stats.monthly = months
+            .iter()
+            .zip(monthly)
+            .map(|(&(year, month), count)| MonthCount {
+                month: format!("{year:04}-{month:02}"),
+                count,
+            })
+            .collect();
         stats
     }
+}
+
+/// Les `n` derniers mois civils (heure locale), du plus ancien au mois en cours.
+fn last_months(now: DateTime<Utc>, n: u32) -> Vec<(i32, u32)> {
+    let local = now.with_timezone(&Local);
+    let current = local.year() * 12 + local.month0() as i32;
+    (0..n as i32)
+        .rev()
+        .map(|back| {
+            let index = current - back;
+            (index.div_euclid(12), index.rem_euclid(12) as u32 + 1)
+        })
+        .collect()
 }
 
 /// Deux dates tombent-elles dans le même mois civil (heure locale) ?
@@ -297,6 +329,21 @@ mod tests {
             store.giveaways[0].sources,
             vec!["a".to_string(), "b".to_string()]
         );
+    }
+
+    #[test]
+    fn dead_list_never_overrides_a_checked_status() {
+        let mut store = Store::in_memory();
+        let now = Utc::now();
+        store.merge_codes(
+            &[("REVIVED".into(), "a".into()), ("NEW".into(), "a".into())],
+            now,
+        );
+        store.set_status("REVIVED", Status::Active, now);
+        let changed = store.mark_ended(&["revived".into(), "new".into()], now);
+        assert_eq!(changed, 1);
+        assert_eq!(store.giveaways[0].status, Status::Active);
+        assert_eq!(store.giveaways[1].status, Status::Ended);
     }
 
     #[test]
@@ -396,6 +443,32 @@ mod tests {
         assert_eq!(stats.total_participations, 3);
         assert_eq!(stats.this_month, 2);
         assert_eq!(stats.done_this_month, 2);
+        assert_eq!(stats.monthly.len(), 12);
+        assert_eq!(
+            stats.monthly[11],
+            MonthCount {
+                month: "2026-11".into(),
+                count: 2
+            }
+        );
+        assert_eq!(
+            stats.monthly[10],
+            MonthCount {
+                month: "2026-10".into(),
+                count: 1
+            }
+        );
+        assert_eq!(stats.monthly[0].month, "2025-12");
+    }
+
+    #[test]
+    fn last_months_cross_the_year() {
+        let january = Local
+            .with_ymd_and_hms(2027, 1, 15, 12, 0, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+        let months = last_months(january, 3);
+        assert_eq!(months, vec![(2026, 11), (2026, 12), (2027, 1)]);
     }
 
     #[test]

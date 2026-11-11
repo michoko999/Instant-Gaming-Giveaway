@@ -21,6 +21,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            update::cleanup();
             let paths = AppPaths::resolve(app.handle());
             paths.apply_pending_reset();
             let store = Store::load(&paths.data);
@@ -56,6 +57,7 @@ fn main() {
             commands::list_giveaways,
             commands::set_ignored,
             commands::import_list,
+            commands::add_links,
             commands::get_history,
             commands::export_history,
             commands::start_session,
@@ -68,6 +70,7 @@ fn main() {
             commands::open_external,
             commands::open_data_dir,
             commands::check_update,
+            commands::install_update,
         ])
         .run(tauri::generate_context!())
         .expect("erreur au lancement de Giveaway IG");
