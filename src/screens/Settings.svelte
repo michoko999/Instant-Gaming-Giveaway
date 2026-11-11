@@ -413,11 +413,12 @@
     padding: 12px 0;
     border-top: 1px solid rgba(255, 255, 255, 0.07);
   }
+  /* Le nom doit rester lisible dans toutes les langues (« Nom (facultatif) »…). */
   .grow {
-    flex: 1 1 120px;
+    flex: 1 1 160px;
   }
   .grow2 {
-    flex: 3 1 200px;
+    flex: 2 1 180px;
   }
   .small {
     font-size: 12px;

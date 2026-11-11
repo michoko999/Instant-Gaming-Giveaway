@@ -148,8 +148,10 @@
     min-height: 46px;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
   }
+  /* Police à chasse fixe : toutes les heures ont la même largeur, AM/PM compris. */
   .time {
-    width: 72px;
+    min-width: 72px;
+    white-space: nowrap;
     font-size: 12px;
     color: var(--faint);
   }
