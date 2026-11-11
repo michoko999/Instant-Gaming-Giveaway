@@ -75,7 +75,7 @@ jobs:
           "sha256=$hash" >> $env:GITHUB_OUTPUT
 
       # Preuve publique que l'exécutable a été compilé ici, depuis ce commit.
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: out/GiveawayIG.exe
 
