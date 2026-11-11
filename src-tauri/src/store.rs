@@ -67,7 +67,9 @@ impl Store {
     }
 
     pub fn find_mut(&mut self, code: &str) -> Option<&mut Giveaway> {
-        self.giveaways.iter_mut().find(|g| g.code.eq_ignore_ascii_case(code))
+        self.giveaways
+            .iter_mut()
+            .find(|g| g.code.eq_ignore_ascii_case(code))
     }
 
     /// Ajoute les codes inconnus. Renvoie le nombre de nouveaux concours.
@@ -147,7 +149,10 @@ impl Store {
     }
 
     pub fn counts(&self, now: DateTime<Utc>) -> Counts {
-        let mut c = Counts { total: self.giveaways.len(), ..Counts::default() };
+        let mut c = Counts {
+            total: self.giveaways.len(),
+            ..Counts::default()
+        };
         for g in &self.giveaways {
             match g.status {
                 Status::Active => c.active += 1,
@@ -170,7 +175,13 @@ impl Store {
         message: Option<String>,
         now: DateTime<Utc>,
     ) {
-        self.history.push(HistoryEntry { code: code.to_string(), at: now, outcome, mode, message });
+        self.history.push(HistoryEntry {
+            code: code.to_string(),
+            at: now,
+            outcome,
+            mode,
+            message,
+        });
         if self.history.len() > MAX_HISTORY {
             let excess = self.history.len() - MAX_HISTORY;
             self.history.drain(0..excess);
@@ -191,7 +202,9 @@ impl Store {
                 Outcome::Captcha | Outcome::Error | Outcome::Login => {
                     // Ne pas effacer une participation déjà réussie ce mois-ci.
                     let already_done = g.last_outcome.map(|o| o.done_for_month()).unwrap_or(false)
-                        && g.last_participation.map(|at| same_month(at, now)).unwrap_or(false);
+                        && g.last_participation
+                            .map(|at| same_month(at, now))
+                            .unwrap_or(false);
                     if !already_done {
                         g.last_outcome = Some(outcome);
                     }
@@ -271,12 +284,19 @@ mod tests {
         let mut store = Store::in_memory();
         let now = Utc::now();
         let added = store.merge_codes(
-            &[("TOMBIE".into(), "a".into()), ("tombie".into(), "b".into()), ("PIVI".into(), "a".into())],
+            &[
+                ("TOMBIE".into(), "a".into()),
+                ("tombie".into(), "b".into()),
+                ("PIVI".into(), "a".into()),
+            ],
             now,
         );
         assert_eq!(added, 2);
         assert_eq!(store.giveaways.len(), 2);
-        assert_eq!(store.giveaways[0].sources, vec!["a".to_string(), "b".to_string()]);
+        assert_eq!(
+            store.giveaways[0].sources,
+            vec!["a".to_string(), "b".to_string()]
+        );
     }
 
     #[test]
@@ -284,7 +304,12 @@ mod tests {
         let mut store = Store::in_memory();
         let now = Utc::now();
         store.merge_codes(
-            &[("A".into(), "s".into()), ("B".into(), "s".into()), ("C".into(), "s".into()), ("D".into(), "s".into())],
+            &[
+                ("A".into(), "s".into()),
+                ("B".into(), "s".into()),
+                ("C".into(), "s".into()),
+                ("D".into(), "s".into()),
+            ],
             now,
         );
         for code in ["A", "B", "C", "D"] {
@@ -295,17 +320,32 @@ mod tests {
         store.record("D", Outcome::Participated, SessionMode::Auto, None, now);
         assert_eq!(store.session_queue(now), vec!["A".to_string()]);
         store.settings.skip_done_this_month = false;
-        assert_eq!(store.session_queue(now), vec!["A".to_string(), "D".to_string()]);
+        assert_eq!(
+            store.session_queue(now),
+            vec!["A".to_string(), "D".to_string()]
+        );
     }
 
     #[test]
     fn participation_from_last_month_is_queued_again() {
         let mut store = Store::in_memory();
-        let now = Local.with_ymd_and_hms(2026, 11, 11, 20, 0, 0).unwrap().with_timezone(&Utc);
-        let last_month = Local.with_ymd_and_hms(2026, 10, 28, 20, 0, 0).unwrap().with_timezone(&Utc);
+        let now = Local
+            .with_ymd_and_hms(2026, 11, 11, 20, 0, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+        let last_month = Local
+            .with_ymd_and_hms(2026, 10, 28, 20, 0, 0)
+            .unwrap()
+            .with_timezone(&Utc);
         store.merge_codes(&[("A".into(), "s".into())], last_month);
         store.set_status("A", Status::Active, last_month);
-        store.record("A", Outcome::Participated, SessionMode::Auto, None, last_month);
+        store.record(
+            "A",
+            Outcome::Participated,
+            SessionMode::Auto,
+            None,
+            last_month,
+        );
         assert_eq!(store.session_queue(now), vec!["A".to_string()]);
         assert!(store.session_queue(last_month).is_empty());
     }
@@ -334,12 +374,24 @@ mod tests {
     #[test]
     fn monthly_stats() {
         let mut store = Store::in_memory();
-        let now = Local.with_ymd_and_hms(2026, 11, 11, 20, 0, 0).unwrap().with_timezone(&Utc);
-        let last_month = Local.with_ymd_and_hms(2026, 10, 2, 20, 0, 0).unwrap().with_timezone(&Utc);
+        let now = Local
+            .with_ymd_and_hms(2026, 11, 11, 20, 0, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+        let last_month = Local
+            .with_ymd_and_hms(2026, 10, 2, 20, 0, 0)
+            .unwrap()
+            .with_timezone(&Utc);
         store.record("A", Outcome::Participated, SessionMode::Auto, None, now);
         store.record("B", Outcome::Already, SessionMode::Auto, None, now);
         store.record("C", Outcome::Opened, SessionMode::Manual, None, now);
-        store.record("D", Outcome::Participated, SessionMode::Auto, None, last_month);
+        store.record(
+            "D",
+            Outcome::Participated,
+            SessionMode::Auto,
+            None,
+            last_month,
+        );
         let stats = store.stats(now);
         assert_eq!(stats.total_participations, 3);
         assert_eq!(stats.this_month, 2);

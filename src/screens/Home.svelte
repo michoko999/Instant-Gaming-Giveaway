@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from '../lib/Icon.svelte';
   import Ring from '../lib/Ring.svelte';
-  import { app, duration, saveSettings, since, startSession, t, updateLists } from '../lib/state.svelte';
+  import { app, duration, minDelay, saveSettings, since, startSession, t, updateLists, SAFE_MIN_DELAY } from '../lib/state.svelte';
 
   const o = $derived(app.overview);
   const counts = $derived(o?.counts);
@@ -11,17 +11,17 @@
   const busy = $derived(app.syncing || app.checking);
   const last = $derived(o?.meta.lastSession ?? null);
 
-  let seconds = $state(4);
+  const min = $derived(minDelay(settings));
+  let seconds = $state(SAFE_MIN_DELAY);
   $effect(() => {
-    seconds = settings?.secondsPerGiveaway ?? 4;
+    seconds = settings?.secondsPerGiveaway ?? SAFE_MIN_DELAY;
   });
 
-  // Estimation d'une session automatique : rythme minimum et limite du mode prudent.
+  // Estimation d'une session automatique (avec la limite par session).
   const estimate = $derived.by(() => {
     const limit = settings?.sessionLimit ?? 0;
     const count = limit > 0 ? Math.min(queue, limit) : queue;
-    const pace = settings?.safeMode ? Math.max(seconds, 8) : seconds;
-    return count * (pace + 3);
+    return count * (Math.max(seconds, min) + 3);
   });
   const monthDone = $derived(o?.stats.doneThisMonth ?? 0);
   const monthTotal = $derived(monthDone + queue);
@@ -121,7 +121,7 @@
       <input
         id="home-rhythm"
         type="range"
-        min="2"
+        {min}
         max="15"
         step="1"
         bind:value={seconds}

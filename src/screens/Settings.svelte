@@ -1,14 +1,15 @@
 <script lang="ts">
   import Icon from '../lib/Icon.svelte';
   import { api, REPO_URL, type Lang, type Source } from '../lib/api';
-  import { ACCENTS, LANGUAGES, app, fail, refresh, saveSettings, t, toast } from '../lib/state.svelte';
+  import { ACCENTS, LANGUAGES, app, fail, minDelay, refresh, saveSettings, t, toast, SAFE_MIN_DELAY } from '../lib/state.svelte';
 
   const o = $derived(app.overview);
   const s = $derived(o?.settings);
 
-  let seconds = $state(4);
+  const min = $derived(minDelay(s));
+  let seconds = $state(SAFE_MIN_DELAY);
   $effect(() => {
-    seconds = s?.secondsPerGiveaway ?? 4;
+    seconds = s?.secondsPerGiveaway ?? SAFE_MIN_DELAY;
   });
 
   let loginOpened = $state(false);
@@ -135,13 +136,13 @@
           <div class="line">
             <span class="stack">
               <label for="set-delay">{t('set.delay')}</label>
-              <span class="faint small">{t('set.delayHint')}</span>
+              <span class="faint small">{s.safeMode ? `${t('set.delayHint')} ${t('set.delaySafe')}` : t('set.delayHint')}</span>
             </span>
             <div class="range">
               <input
                 id="set-delay"
                 type="range"
-                min="2"
+                {min}
                 max="15"
                 step="1"
                 bind:value={seconds}
@@ -164,7 +165,24 @@
               <span class="row-inline"><Icon name="shield" size={16} />{t('set.safe')}</span>
               <span class="faint small">{t('set.safeHint')}</span>
             </span>
-            <input type="checkbox" class="switch" checked={s.safeMode} onchange={() => saveSettings({ safeMode: !s.safeMode })} />
+            <input
+              type="checkbox"
+              class="switch"
+              checked={s.safeMode}
+              onchange={() =>
+                saveSettings({
+                  safeMode: !s.safeMode,
+                  // Le mode prudent impose un minimum : on remonte le réglage tout de suite.
+                  secondsPerGiveaway: s.safeMode ? s.secondsPerGiveaway : Math.max(s.secondsPerGiveaway, SAFE_MIN_DELAY),
+                })}
+            />
+          </label>
+          <label class="line">
+            <span class="stack">
+              <span class="row-inline"><Icon name="eye" size={16} />{t('set.showIg')}</span>
+              <span class="faint small">{t('set.showIgHint')}</span>
+            </span>
+            <input type="checkbox" class="switch" checked={s.showIgWindow} onchange={() => saveSettings({ showIgWindow: !s.showIgWindow })} />
           </label>
           <div class="line">
             <span class="stack">

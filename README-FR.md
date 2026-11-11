@@ -20,6 +20,7 @@ Giveaway IG est une application Windows **portable** (aucune installation) qui r
 - **Mode automatique** : tu te connectes une seule fois à ton compte dans la fenêtre Instant Gaming intégrée. Ensuite, l'application ouvre chaque concours et clique sur « Participer » à ta place.
   - Si le site demande une vérification humaine (captcha), le concours est mis de côté et tu le fais toi-même à la fin. **L'application ne résout ni ne contourne jamais de captcha.**
   - Si ton compte est déconnecté, la session se met en pause le temps que tu te reconnectes.
+  - La fenêtre Instant Gaming reste cachée pendant qu'elle travaille ; « Voir la page en direct » l'affiche quand tu veux (la fermer la cache simplement).
 - **Mode manuel** : les concours s'ouvrent un par un ; tu cliques sur « Participer » et l'application passe au suivant dès qu'elle détecte ta participation.
 - **Listes toujours à jour** : deux listes communautaires intégrées, plus tes propres fichiers (CSV, TXT, JSON) ou listes en ligne.
 - **Vérification rapide** : des centaines de concours testés en parallèle en moins d'une minute.

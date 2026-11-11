@@ -16,6 +16,25 @@ use crate::state::AppState;
 pub const IG_LABEL: &str = "ig";
 pub const REPORT_HOST: &str = "giveaway-ig.invalid";
 
+/// Arguments WebView2, identiques pour toutes les fenêtres (elles partagent le même profil).
+/// En plus des réglages par défaut de wry, ils évitent que la page d'une fenêtre cachée
+/// soit ralentie par le navigateur.
+pub const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection \
+--disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows";
+
+/// Ce que doit faire la fenêtre Instant Gaming quand on y ouvre une page.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Visibility {
+    /// Afficher et mettre au premier plan.
+    Focus,
+    /// Afficher sans voler le focus.
+    Show,
+    /// Garder cachée (session automatique en arrière-plan).
+    Hidden,
+    /// Ne rien changer.
+    Keep,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScriptMode {
     /// Clique sur « Participer » et observe le résultat.
@@ -87,7 +106,10 @@ const SCRIPT_TEMPLATE: &str = r#"(() => {
       else report('ended', 'redirect');
       return;
     }
-    for (let i = 0; i < 60; i++) {
+    // Délais mesurés en temps réel (et non en nombre de tours) pour rester justes même si
+    // le navigateur ralentit les minuteries de la page.
+    const loadDeadline = Date.now() + 15000;
+    while (Date.now() < loadDeadline) {
       if (ended() || (root() && (window.giveaway || findButton()))) break;
       await sleep(250);
     }
@@ -114,7 +136,8 @@ const SCRIPT_TEMPLATE: &str = r#"(() => {
     await sleep(1500);
     button.scrollIntoView({ block: 'center' });
     button.click();
-    for (let i = 0; i < 60; i++) {
+    const clickDeadline = Date.now() + 15000;
+    while (Date.now() < clickDeadline) {
       await sleep(250);
       if (participating()) { report('participated'); return; }
       if (warning) { report('error', warning); return; }
@@ -142,7 +165,12 @@ pub fn parse_report(url: &Url) -> Option<Report> {
     if url.host_str() != Some(REPORT_HOST) {
         return None;
     }
-    let mut report = Report { kind: String::new(), code: String::new(), token: String::new(), message: None };
+    let mut report = Report {
+        kind: String::new(),
+        code: String::new(),
+        token: String::new(),
+        message: None,
+    };
     for (key, value) in url.query_pairs() {
         match key.as_ref() {
             "k" => report.kind = value.into_owned(),
@@ -165,7 +193,10 @@ pub fn new_token() -> String {
     use std::hash::{BuildHasher, Hasher};
     let mut hasher = RandomState::new().build_hasher();
     hasher.write_u128(
-        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0),
     );
     format!("{:016x}", hasher.finish())
 }
@@ -174,15 +205,30 @@ pub fn ig_window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(IG_LABEL)
 }
 
+pub fn reveal(window: &WebviewWindow) {
+    let _ = window.show();
+    let _ = window.unminimize();
+    let _ = window.set_focus();
+}
+
 /// Ouvre (ou réutilise) la fenêtre Instant Gaming sur `url`.
-pub fn open_ig(app: &AppHandle, url: &str, focus: bool) -> Result<WebviewWindow, String> {
+pub fn open_ig(
+    app: &AppHandle,
+    url: &str,
+    visibility: Visibility,
+) -> Result<WebviewWindow, String> {
     let target = Url::parse(url).map_err(|e| e.to_string())?;
     if let Some(window) = ig_window(app) {
         window.navigate(target).map_err(|e| e.to_string())?;
-        let _ = window.show();
-        if focus {
-            let _ = window.unminimize();
-            let _ = window.set_focus();
+        match visibility {
+            Visibility::Focus => reveal(&window),
+            Visibility::Show => {
+                let _ = window.show();
+            }
+            Visibility::Hidden => {
+                let _ = window.hide();
+            }
+            Visibility::Keep => {}
         }
         return Ok(window);
     }
@@ -195,7 +241,9 @@ pub fn open_ig(app: &AppHandle, url: &str, focus: bool) -> Result<WebviewWindow,
         .inner_size(1100.0, 820.0)
         .min_inner_size(700.0, 500.0)
         .data_directory(state.paths.webview.clone())
-        .focused(focus)
+        .additional_browser_args(BROWSER_ARGS)
+        .visible(visibility != Visibility::Hidden)
+        .focused(visibility == Visibility::Focus)
         .on_navigation(move |url| {
             if url.host_str() == Some(REPORT_HOST) {
                 if let Some(report) = parse_report(url) {
@@ -207,7 +255,12 @@ pub fn open_ig(app: &AppHandle, url: &str, focus: bool) -> Result<WebviewWindow,
         })
         .on_page_load(move |webview, payload| {
             if payload.event() == PageLoadEvent::Finished {
-                let script = load_handle.state::<AppState>().ig_script.lock().ok().and_then(|s| s.clone());
+                let script = load_handle
+                    .state::<AppState>()
+                    .ig_script
+                    .lock()
+                    .ok()
+                    .and_then(|s| s.clone());
                 if let Some(script) = script {
                     let _ = webview.eval(&script);
                 }
@@ -217,10 +270,26 @@ pub fn open_ig(app: &AppHandle, url: &str, focus: bool) -> Result<WebviewWindow,
         .map_err(|e| e.to_string())?;
 
     let close_handle = app.clone();
-    window.on_window_event(move |event| {
-        if let WindowEvent::Destroyed = event {
-            close_handle.state::<AppState>().send_control(Control::IgClosed);
+    window.on_window_event(move |event| match event {
+        // Pendant une session automatique, fermer la fenêtre la cache seulement : la session continue.
+        WindowEvent::CloseRequested { api, .. } => {
+            let state = close_handle.state::<AppState>();
+            if state
+                .ig_hide_on_close
+                .load(std::sync::atomic::Ordering::SeqCst)
+            {
+                api.prevent_close();
+                if let Some(window) = ig_window(&close_handle) {
+                    let _ = window.hide();
+                }
+            }
         }
+        WindowEvent::Destroyed => {
+            close_handle
+                .state::<AppState>()
+                .send_control(Control::IgClosed);
+        }
+        _ => {}
     });
     Ok(window)
 }
@@ -249,13 +318,17 @@ mod tests {
 
     #[test]
     fn parses_reports() {
-        let url = Url::parse("https://giveaway-ig.invalid/report?k=error&c=PIVI&t=tok&m=Oops%20!").unwrap();
+        let url = Url::parse("https://giveaway-ig.invalid/report?k=error&c=PIVI&t=tok&m=Oops%20!")
+            .unwrap();
         let report = parse_report(&url).unwrap();
         assert_eq!(report.kind, "error");
         assert_eq!(report.code, "PIVI");
         assert_eq!(report.token, "tok");
         assert_eq!(report.message.as_deref(), Some("Oops !"));
-        assert!(parse_report(&Url::parse("https://www.instant-gaming.com/report?k=x").unwrap()).is_none());
+        assert!(
+            parse_report(&Url::parse("https://www.instant-gaming.com/report?k=x").unwrap())
+                .is_none()
+        );
     }
 
     #[test]

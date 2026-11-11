@@ -7,17 +7,15 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, UserAttentionType};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
-use crate::automation::{self, Report, ScriptMode};
+use crate::automation::{self, Report, ScriptMode, Visibility};
 use crate::checker::giveaway_url;
-use crate::model::{Outcome, SessionMode, SessionSummary};
+use crate::model::{Outcome, SessionMode, SessionSummary, SAFE_MIN_DELAY};
 use crate::state::AppState;
 
 /// Délai maximal d'attente d'une réponse de la page en mode automatique.
 const AUTO_TIMEOUT: Duration = Duration::from_secs(45);
 /// Pause après une participation détectée en mode manuel, avant de passer au suivant.
 const MANUAL_AFTER_SUCCESS: Duration = Duration::from_millis(1200);
-/// Mode prudent : temps minimum entre deux concours en mode automatique.
-const SAFE_MIN_DELAY: f64 = 8.0;
 /// Mode prudent : arrêt après ce nombre de vérifications humaines dans la session.
 const SAFE_MAX_CAPTCHAS: usize = 2;
 /// Arrêt après ce nombre d'erreurs techniques d'affilée (site injoignable, page inattendue...).
@@ -88,7 +86,12 @@ enum Wait {
 
 /// Lance une session en arrière-plan. Renvoie le nombre de concours à traiter.
 /// `limited` vaut la limite appliquée à la file (0 si aucune).
-pub fn start(app: &AppHandle, mode: SessionMode, codes: Vec<String>, limited: usize) -> Result<usize, String> {
+pub fn start(
+    app: &AppHandle,
+    mode: SessionMode,
+    codes: Vec<String>,
+    limited: usize,
+) -> Result<usize, String> {
     if codes.is_empty() {
         return Err("no-giveaways".into());
     }
@@ -183,16 +186,35 @@ async fn run(
     mut rep: UnboundedReceiver<Report>,
 ) {
     let state = app.state::<AppState>();
-    let (lang, delay, safe) = match state.store.lock() {
-        Ok(store) => (store.settings.language.clone(), store.settings.seconds_per_giveaway, store.settings.safe_mode),
-        Err(_) => ("fr".to_string(), 4.0, true),
+    let (lang, delay, safe, show_ig) = match state.store.lock() {
+        Ok(store) => (
+            store.settings.language.clone(),
+            store.settings.seconds_per_giveaway,
+            store.settings.safe_mode,
+            store.settings.show_ig_window,
+        ),
+        Err(_) => ("fr".to_string(), SAFE_MIN_DELAY, true, false),
     };
+    // En mode automatique, la fenêtre peut rester cachée ; la fermer la cache sans arrêter la session.
+    state.ig_hide_on_close.store(
+        mode == SessionMode::Auto,
+        std::sync::atomic::Ordering::SeqCst,
+    );
     let careful = safe && mode == SessionMode::Auto;
     // En mode prudent, on laisse toujours au moins quelques secondes entre deux concours.
-    let delay = if careful { delay.max(SAFE_MIN_DELAY) } else { delay };
+    let delay = if careful {
+        delay.max(SAFE_MIN_DELAY)
+    } else {
+        delay
+    };
     let total = codes.len();
-    let mut summary =
-        SessionSummary { started_at: Some(Utc::now()), mode, total, limited, ..SessionSummary::default() };
+    let mut summary = SessionSummary {
+        started_at: Some(Utc::now()),
+        mode,
+        total,
+        limited,
+        ..SessionSummary::default()
+    };
     let mut captchas = 0usize;
     let mut consecutive_errors = 0usize;
     let mut progress = Progress {
@@ -232,104 +254,115 @@ async fn run(
         while rep.try_recv().is_ok() {}
 
         let mut site_warning = false;
-        let (outcome, message) = match automation::open_ig(&app, &giveaway_url(&lang, &code), first) {
-            Err(error) => (Outcome::Error, Some(error)),
-            Ok(_) => {
-                first = false;
-                match mode {
-                    SessionMode::Auto => match wait_event(&mut ctl, &mut rep, &token, AUTO_TIMEOUT).await {
-                        Wait::Report(report) => match map_auto_report(&report) {
-                            Some((outcome, message, warning)) => {
-                                site_warning = warning;
-                                (outcome, message)
-                            }
-                            None => {
-                                // Compte déconnecté : on attend que l'utilisateur se connecte.
-                                progress.state = "login";
-                                emit_progress(&app, &progress);
-                                if let Some(window) = automation::ig_window(&app) {
-                                    let _ = window.set_focus();
-                                }
-                                if wait_resume(&mut ctl).await {
-                                    continue 'session;
-                                }
-                                summary.stopped = true;
-                                break 'session;
-                            }
-                        },
-                        Wait::Timeout => (Outcome::Error, Some("no-response".into())),
-                        Wait::Control(control) => match control {
-                            Control::Skip | Control::Next => (Outcome::Skipped, None),
-                            Control::Resume => continue 'session,
-                            Control::Pause => {
-                                progress.state = "paused";
-                                emit_progress(&app, &progress);
-                                if wait_resume(&mut ctl).await {
-                                    continue 'session;
-                                }
-                                summary.stopped = true;
-                                break 'session;
-                            }
-                            Control::Stop | Control::IgClosed => {
-                                summary.stopped = true;
-                                break 'session;
-                            }
-                        },
-                    },
-                    SessionMode::Manual => {
-                        let mut remaining = delay.ceil().max(1.0) as u64;
-                        let mut result = (Outcome::Opened, None);
-                        loop {
-                            progress.countdown = Some(remaining);
-                            emit_progress(&app, &progress);
-                            if remaining == 0 {
-                                break;
-                            }
-                            match wait_event(&mut ctl, &mut rep, &token, Duration::from_secs(1)).await {
-                                Wait::Timeout => remaining -= 1,
-                                Wait::Report(report) => match report.kind.as_str() {
-                                    "participated" => {
-                                        result = (Outcome::Participated, None);
-                                        tokio::time::sleep(MANUAL_AFTER_SUCCESS).await;
-                                        break;
+        let visibility = match (first, mode) {
+            (false, _) => Visibility::Keep,
+            (true, SessionMode::Manual) => Visibility::Focus,
+            (true, SessionMode::Auto) if show_ig => Visibility::Show,
+            (true, SessionMode::Auto) => Visibility::Hidden,
+        };
+        let (outcome, message) =
+            match automation::open_ig(&app, &giveaway_url(&lang, &code), visibility) {
+                Err(error) => (Outcome::Error, Some(error)),
+                Ok(_) => {
+                    first = false;
+                    match mode {
+                        SessionMode::Auto => {
+                            match wait_event(&mut ctl, &mut rep, &token, AUTO_TIMEOUT).await {
+                                Wait::Report(report) => match map_auto_report(&report) {
+                                    Some((outcome, message, warning)) => {
+                                        site_warning = warning;
+                                        (outcome, message)
                                     }
-                                    "already" => {
-                                        result = (Outcome::Already, None);
-                                        break;
-                                    }
-                                    "ended" => {
-                                        result = (Outcome::Ended, None);
-                                        break;
-                                    }
-                                    _ => {}
-                                },
-                                Wait::Control(Control::Next) => break,
-                                Wait::Control(Control::Skip) => {
-                                    result = (Outcome::Skipped, None);
-                                    break;
-                                }
-                                Wait::Control(Control::Resume) => {}
-                                Wait::Control(Control::Pause) => {
-                                    progress.state = "paused";
-                                    emit_progress(&app, &progress);
-                                    if !wait_resume(&mut ctl).await {
+                                    None => {
+                                        // Compte déconnecté : on attend que l'utilisateur se connecte.
+                                        progress.state = "login";
+                                        emit_progress(&app, &progress);
+                                        if let Some(window) = automation::ig_window(&app) {
+                                            automation::reveal(&window);
+                                        }
+                                        if wait_resume(&mut ctl).await {
+                                            continue 'session;
+                                        }
                                         summary.stopped = true;
                                         break 'session;
                                     }
-                                    progress.state = "running";
-                                }
-                                Wait::Control(Control::Stop | Control::IgClosed) => {
-                                    summary.stopped = true;
-                                    break 'session;
-                                }
+                                },
+                                Wait::Timeout => (Outcome::Error, Some("no-response".into())),
+                                Wait::Control(control) => match control {
+                                    Control::Skip | Control::Next => (Outcome::Skipped, None),
+                                    Control::Resume => continue 'session,
+                                    Control::Pause => {
+                                        progress.state = "paused";
+                                        emit_progress(&app, &progress);
+                                        if wait_resume(&mut ctl).await {
+                                            continue 'session;
+                                        }
+                                        summary.stopped = true;
+                                        break 'session;
+                                    }
+                                    Control::Stop | Control::IgClosed => {
+                                        summary.stopped = true;
+                                        break 'session;
+                                    }
+                                },
                             }
                         }
-                        progress.countdown = None;
-                        result
+                        SessionMode::Manual => {
+                            let mut remaining = delay.ceil().max(1.0) as u64;
+                            let mut result = (Outcome::Opened, None);
+                            loop {
+                                progress.countdown = Some(remaining);
+                                emit_progress(&app, &progress);
+                                if remaining == 0 {
+                                    break;
+                                }
+                                match wait_event(&mut ctl, &mut rep, &token, Duration::from_secs(1))
+                                    .await
+                                {
+                                    Wait::Timeout => remaining -= 1,
+                                    Wait::Report(report) => match report.kind.as_str() {
+                                        "participated" => {
+                                            result = (Outcome::Participated, None);
+                                            tokio::time::sleep(MANUAL_AFTER_SUCCESS).await;
+                                            break;
+                                        }
+                                        "already" => {
+                                            result = (Outcome::Already, None);
+                                            break;
+                                        }
+                                        "ended" => {
+                                            result = (Outcome::Ended, None);
+                                            break;
+                                        }
+                                        _ => {}
+                                    },
+                                    Wait::Control(Control::Next) => break,
+                                    Wait::Control(Control::Skip) => {
+                                        result = (Outcome::Skipped, None);
+                                        break;
+                                    }
+                                    Wait::Control(Control::Resume) => {}
+                                    Wait::Control(Control::Pause) => {
+                                        progress.state = "paused";
+                                        emit_progress(&app, &progress);
+                                        if !wait_resume(&mut ctl).await {
+                                            summary.stopped = true;
+                                            break 'session;
+                                        }
+                                        progress.state = "running";
+                                    }
+                                    Wait::Control(Control::Stop | Control::IgClosed) => {
+                                        summary.stopped = true;
+                                        break 'session;
+                                    }
+                                }
+                            }
+                            progress.countdown = None;
+                            result
+                        }
                     }
                 }
-            }
-        };
+            };
 
         record(&app, &code, outcome, mode, message.clone(), i);
         match outcome {
@@ -348,7 +381,15 @@ async fn run(
         progress.skipped = summary.skipped;
         progress.errors = summary.errors;
         progress.pending = summary.pending.len();
-        let _ = app.emit("session-log", LogEntry { at: Utc::now(), code: code.clone(), outcome, message });
+        let _ = app.emit(
+            "session-log",
+            LogEntry {
+                at: Utc::now(),
+                code: code.clone(),
+                outcome,
+                message,
+            },
+        );
         i += 1;
         progress.index = i;
 
@@ -412,9 +453,18 @@ async fn run(
     finish(&app, summary, progress);
 }
 
-fn record(app: &AppHandle, code: &str, outcome: Outcome, mode: SessionMode, message: Option<String>, index: usize) {
+fn record(
+    app: &AppHandle,
+    code: &str,
+    outcome: Outcome,
+    mode: SessionMode,
+    message: Option<String>,
+    index: usize,
+) {
     let state = app.state::<AppState>();
-    let Ok(mut store) = state.store.lock() else { return };
+    let Ok(mut store) = state.store.lock() else {
+        return;
+    };
     store.record(code, outcome, mode, message, Utc::now());
     let _ = store.save_giveaways();
     if index % 5 == 4 {
@@ -438,6 +488,9 @@ fn finish(app: &AppHandle, mut summary: SessionSummary, mut progress: Progress) 
         *reports = None;
     }
     state.set_script(None);
+    state
+        .ig_hide_on_close
+        .store(false, std::sync::atomic::Ordering::SeqCst);
     automation::close_ig(app);
 
     progress.state = "finished";

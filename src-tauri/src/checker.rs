@@ -12,11 +12,27 @@ use crate::model::Status;
 const MARKERS: [(&str, &str, &str); 7] = [
     ("fr", "Ce Giveaway est terminé", "Gagne le jeu de ton choix"),
     ("en", "This giveaway is over", "Win the game of your choice"),
-    ("es", "Este sorteo ya ha terminado", "Gana el juego que quieras"),
-    ("de", "Dieses Giveaway ist vorüber", "Gewinne ein Spiel deiner Wahl"),
+    (
+        "es",
+        "Este sorteo ya ha terminado",
+        "Gana el juego que quieras",
+    ),
+    (
+        "de",
+        "Dieses Giveaway ist vorüber",
+        "Gewinne ein Spiel deiner Wahl",
+    ),
     ("pt", "O giveaway terminou", "Ganha um jogo à tua escolha"),
-    ("it", "Questo giveaway è finito", "Vinci un gioco a tua scelta"),
-    ("pl", "To giveaway zakończone", "Wygraj wybraną przez siebie grę"),
+    (
+        "it",
+        "Questo giveaway è finito",
+        "Vinci un gioco a tua scelta",
+    ),
+    (
+        "pl",
+        "To giveaway zakończone",
+        "Wygraj wybraną przez siebie grę",
+    ),
 ];
 
 /// Nombre de pages vérifiées en même temps (volontairement modeste pour ne pas surcharger le site).
@@ -42,7 +58,9 @@ pub fn classify(http_status: u16, body: &str) -> Status {
     if MARKERS.iter().any(|(_, ended, _)| body.contains(ended)) {
         return Status::Ended;
     }
-    if MARKERS.iter().any(|(_, _, active)| body.contains(active)) || body.contains("participate-actions") {
+    if MARKERS.iter().any(|(_, _, active)| body.contains(active))
+        || body.contains("participate-actions")
+    {
         return Status::Active;
     }
     Status::Unknown
@@ -93,15 +111,27 @@ mod tests {
     fn classifies_pages() {
         assert_eq!(classify(404, ""), Status::Ended);
         assert_eq!(classify(500, "Gagne le jeu de ton choix"), Status::Unknown);
-        assert_eq!(classify(200, "<h1>Ce Giveaway est terminé</h1>"), Status::Ended);
-        assert_eq!(classify(200, "<div>Gagne le jeu de ton choix</div>"), Status::Active);
-        assert_eq!(classify(200, "<div class=\"participate-actions\"></div>"), Status::Active);
+        assert_eq!(
+            classify(200, "<h1>Ce Giveaway est terminé</h1>"),
+            Status::Ended
+        );
+        assert_eq!(
+            classify(200, "<div>Gagne le jeu de ton choix</div>"),
+            Status::Active
+        );
+        assert_eq!(
+            classify(200, "<div class=\"participate-actions\"></div>"),
+            Status::Active
+        );
         assert_eq!(classify(200, "Win the game of your choice"), Status::Active);
         assert_eq!(classify(200, "<html>accueil</html>"), Status::Unknown);
     }
 
     #[test]
     fn builds_urls() {
-        assert_eq!(giveaway_url("pl", "PIVI"), "https://www.instant-gaming.com/pl/giveaway/PIVI");
+        assert_eq!(
+            giveaway_url("pl", "PIVI"),
+            "https://www.instant-gaming.com/pl/giveaway/PIVI"
+        );
     }
 }

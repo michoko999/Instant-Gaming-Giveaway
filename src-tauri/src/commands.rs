@@ -10,7 +10,7 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use tokio::sync::mpsc::unbounded_channel;
 
-use crate::automation::{self, ScriptMode};
+use crate::automation::{self, ScriptMode, Visibility};
 use crate::checker::{self, giveaway_url};
 use crate::model::*;
 use crate::session::{self, Control};
@@ -143,13 +143,22 @@ pub fn add_source(state: State<'_, AppState>, name: String, url: String) -> CmdR
         return Err("https-only".into());
     }
     let mut store = state.store.lock().map_err(lock_err)?;
-    if store.settings.sources.iter().any(|s| s.url == parsed.as_str()) {
+    if store
+        .settings
+        .sources
+        .iter()
+        .any(|s| s.url == parsed.as_str())
+    {
         return Err("duplicate-source".into());
     }
     let label = name.trim();
     store.settings.sources.push(Source {
         id: format!("custom-{}", automation::new_token()),
-        name: if label.is_empty() { parsed.host_str().unwrap_or("source").to_string() } else { label.chars().take(60).collect() },
+        name: if label.is_empty() {
+            parsed.host_str().unwrap_or("source").to_string()
+        } else {
+            label.chars().take(60).collect()
+        },
         url: parsed.to_string(),
         kind: sources::guess_kind(parsed.as_str()),
         enabled: true,
@@ -171,7 +180,13 @@ pub fn remove_source(state: State<'_, AppState>, id: String) -> CmdResult<Settin
 pub async fn sync_lists(app: AppHandle) -> CmdResult<SyncReport> {
     let state = app.state::<AppState>();
     let _busy = BusyGuard::acquire(&state)?;
-    let sources_list = state.store.lock().map_err(lock_err)?.settings.sources.clone();
+    let sources_list = state
+        .store
+        .lock()
+        .map_err(lock_err)?
+        .settings
+        .sources
+        .clone();
     let fetched = sources::fetch_all(&state.client, &sources_list).await;
     let mut store = state.store.lock().map_err(lock_err)?;
     let now = Utc::now();
@@ -182,7 +197,12 @@ pub async fn sync_lists(app: AppHandle) -> CmdResult<SyncReport> {
     }
     store.save_giveaways().map_err(|e| e.to_string())?;
     store.save_meta().map_err(|e| e.to_string())?;
-    Ok(SyncReport { added, marked_ended, total: store.giveaways.len(), sources: fetched.results })
+    Ok(SyncReport {
+        added,
+        marked_ended,
+        total: store.giveaways.len(),
+        sources: fetched.results,
+    })
 }
 
 /// `scope` : "all" (actifs et inconnus) ou "unknown" (seulement ceux jamais vérifiés).
@@ -205,7 +225,15 @@ pub async fn check_giveaways(app: AppHandle, scope: String) -> CmdResult<CheckRe
         (store.settings.language.clone(), codes)
     };
     let total = codes.len();
-    let mut progress = CheckProgress { done: 0, total, active: 0, ended: 0, unknown: 0, code: String::new(), status: Status::Unknown };
+    let mut progress = CheckProgress {
+        done: 0,
+        total,
+        active: 0,
+        ended: 0,
+        unknown: 0,
+        code: String::new(),
+        status: Status::Unknown,
+    };
     checker::check_all(&state.client, &lang, codes, |code, status| {
         progress.done += 1;
         match status {
@@ -217,7 +245,10 @@ pub async fn check_giveaways(app: AppHandle, scope: String) -> CmdResult<CheckRe
         progress.status = status;
         if let Ok(mut store) = state.store.lock() {
             // Une page injoignable (réseau, site lent) ne doit pas faire oublier un état déjà connu.
-            let known = store.find_mut(code).map(|g| g.status != Status::Unknown).unwrap_or(false);
+            let known = store
+                .find_mut(code)
+                .map(|g| g.status != Status::Unknown)
+                .unwrap_or(false);
             if status != Status::Unknown || !known {
                 store.set_status(code, status, Utc::now());
             }
@@ -229,7 +260,12 @@ pub async fn check_giveaways(app: AppHandle, scope: String) -> CmdResult<CheckRe
     store.meta.last_check = Some(Utc::now());
     store.save_giveaways().map_err(|e| e.to_string())?;
     store.save_meta().map_err(|e| e.to_string())?;
-    Ok(CheckReport { total, active: progress.active, ended: progress.ended, unknown: progress.unknown })
+    Ok(CheckReport {
+        total,
+        active: progress.active,
+        ended: progress.ended,
+        unknown: progress.unknown,
+    })
 }
 
 #[tauri::command]
@@ -250,7 +286,11 @@ pub fn set_ignored(state: State<'_, AppState>, code: String, ignored: bool) -> C
 pub async fn import_list(app: AppHandle) -> CmdResult<Option<ImportReport>> {
     let picker = app.clone();
     let picked = tauri::async_runtime::spawn_blocking(move || {
-        picker.dialog().file().add_filter("CSV / TXT / JSON", &["csv", "txt", "json"]).blocking_pick_file()
+        picker
+            .dialog()
+            .file()
+            .add_filter("CSV / TXT / JSON", &["csv", "txt", "json"])
+            .blocking_pick_file()
     })
     .await
     .map_err(|e| e.to_string())?;
@@ -267,14 +307,23 @@ pub async fn import_list(app: AppHandle) -> CmdResult<Option<ImportReport>> {
     };
     let state = app.state::<AppState>();
     let mut store = state.store.lock().map_err(lock_err)?;
-    let pairs: Vec<(String, String)> = codes.iter().map(|c| (c.clone(), "import".to_string())).collect();
+    let pairs: Vec<(String, String)> = codes
+        .iter()
+        .map(|c| (c.clone(), "import".to_string()))
+        .collect();
     let added = store.merge_codes(&pairs, Utc::now());
     store.save_giveaways().map_err(|e| e.to_string())?;
-    Ok(Some(ImportReport { found: codes.len(), added }))
+    Ok(Some(ImportReport {
+        found: codes.len(),
+        added,
+    }))
 }
 
 #[tauri::command]
-pub fn get_history(state: State<'_, AppState>, limit: Option<usize>) -> CmdResult<Vec<HistoryEntry>> {
+pub fn get_history(
+    state: State<'_, AppState>,
+    limit: Option<usize>,
+) -> CmdResult<Vec<HistoryEntry>> {
     let store = state.store.lock().map_err(lock_err)?;
     let limit = limit.unwrap_or(500);
     Ok(store.history.iter().rev().take(limit).cloned().collect())
@@ -288,7 +337,10 @@ pub async fn export_history(app: AppHandle) -> CmdResult<Option<String>> {
             .dialog()
             .file()
             .add_filter("CSV", &["csv"])
-            .set_file_name(format!("giveaway-ig-historique-{}.csv", Local::now().format("%Y-%m-%d")))
+            .set_file_name(format!(
+                "giveaway-ig-historique-{}.csv",
+                Local::now().format("%Y-%m-%d")
+            ))
             .blocking_save_file()
     })
     .await
@@ -304,7 +356,10 @@ pub async fn export_history(app: AppHandle) -> CmdResult<Option<String>> {
                 SessionMode::Auto => "auto",
                 SessionMode::Manual => "manual",
             };
-            let outcome = serde_json::to_value(h.outcome).ok().and_then(|v| v.as_str().map(str::to_string)).unwrap_or_default();
+            let outcome = serde_json::to_value(h.outcome)
+                .ok()
+                .and_then(|v| v.as_str().map(str::to_string))
+                .unwrap_or_default();
             out.push_str(&format!(
                 "{},{},{},{},{}\n",
                 h.at.with_timezone(&Local).format("%Y-%m-%d %H:%M:%S"),
@@ -323,13 +378,20 @@ pub async fn export_history(app: AppHandle) -> CmdResult<Option<String>> {
 // Les commandes qui créent ou ferment des fenêtres sont `async` : sous Windows, une commande
 // synchrone s'exécute sur le fil principal et bloque WebView2 (fenêtre blanche, application figée).
 #[tauri::command]
-pub async fn start_session(app: AppHandle, mode: Option<SessionMode>, codes: Option<Vec<String>>) -> CmdResult<usize> {
+pub async fn start_session(
+    app: AppHandle,
+    mode: Option<SessionMode>,
+    codes: Option<Vec<String>>,
+) -> CmdResult<usize> {
     let state = app.state::<AppState>();
     let (mode, queue, limited) = {
         let store = state.store.lock().map_err(lock_err)?;
         let mode = mode.unwrap_or(store.settings.mode);
         let mut queue: Vec<String> = match codes {
-            Some(list) => list.into_iter().filter_map(|c| sources::extract_code(&c)).collect(),
+            Some(list) => list
+                .into_iter()
+                .filter_map(|c| sources::extract_code(&c))
+                .collect(),
             None => store.session_queue(Utc::now()),
         };
         // Limite par session : uniquement en mode automatique.
@@ -360,9 +422,19 @@ pub async fn open_login(app: AppHandle) -> CmdResult<()> {
     if state.session_running() {
         return Err("session-running".into());
     }
-    let lang = state.store.lock().map_err(lock_err)?.settings.language.clone();
+    let lang = state
+        .store
+        .lock()
+        .map_err(lock_err)?
+        .settings
+        .language
+        .clone();
     state.set_script(None);
-    automation::open_ig(&app, &format!("https://www.instant-gaming.com/{lang}/"), true)?;
+    automation::open_ig(
+        &app,
+        &format!("https://www.instant-gaming.com/{lang}/"),
+        Visibility::Focus,
+    )?;
     Ok(())
 }
 
@@ -388,8 +460,12 @@ pub async fn verify_login(app: AppHandle) -> CmdResult<bool> {
     if let Ok(mut reports) = state.reports.lock() {
         *reports = Some(tx);
     }
-    state.set_script(Some(automation::build_script(ScriptMode::Probe, &code, &token)));
-    let opened = automation::open_ig(&app, &giveaway_url(&lang, &code), false);
+    state.set_script(Some(automation::build_script(
+        ScriptMode::Probe,
+        &code,
+        &token,
+    )));
+    let opened = automation::open_ig(&app, &giveaway_url(&lang, &code), Visibility::Keep);
     let result = match opened {
         Err(e) => Err(e),
         Ok(_) => {
@@ -425,7 +501,7 @@ pub async fn verify_login(app: AppHandle) -> CmdResult<bool> {
         if connected {
             automation::close_ig(&app);
         } else if let Some(window) = automation::ig_window(&app) {
-            let _ = window.set_focus();
+            automation::reveal(&window);
         }
     }
     result
@@ -457,9 +533,15 @@ pub async fn open_giveaway(app: AppHandle, code: String) -> CmdResult<()> {
         return Err("session-running".into());
     }
     let code = sources::extract_code(&code).ok_or_else(|| "invalid-code".to_string())?;
-    let lang = state.store.lock().map_err(lock_err)?.settings.language.clone();
+    let lang = state
+        .store
+        .lock()
+        .map_err(lock_err)?
+        .settings
+        .language
+        .clone();
     state.set_script(None);
-    automation::open_ig(&app, &giveaway_url(&lang, &code), true)?;
+    automation::open_ig(&app, &giveaway_url(&lang, &code), Visibility::Focus)?;
     Ok(())
 }
 
@@ -467,9 +549,7 @@ pub async fn open_giveaway(app: AppHandle, code: String) -> CmdResult<()> {
 pub async fn show_ig_window(app: AppHandle) -> bool {
     match automation::ig_window(&app) {
         Some(window) => {
-            let _ = window.show();
-            let _ = window.unminimize();
-            let _ = window.set_focus();
+            automation::reveal(&window);
             true
         }
         None => false,
@@ -481,17 +561,27 @@ pub async fn show_ig_window(app: AppHandle) -> bool {
 pub fn open_external(app: AppHandle, url: String) -> CmdResult<()> {
     let parsed = url::Url::parse(&url).map_err(|_| "invalid-url".to_string())?;
     let host = parsed.host_str().unwrap_or_default().to_ascii_lowercase();
-    let allowed = ["github.com", "www.instant-gaming.com", "instant-gaming.com", "signpath.org", "www.microsoft.com"];
+    let allowed = [
+        "github.com",
+        "www.instant-gaming.com",
+        "instant-gaming.com",
+        "signpath.org",
+        "www.microsoft.com",
+    ];
     if parsed.scheme() != "https" || !allowed.contains(&host.as_str()) {
         return Err("url-not-allowed".into());
     }
-    app.opener().open_url(parsed.as_str(), None::<&str>).map_err(|e| e.to_string())
+    app.opener()
+        .open_url(parsed.as_str(), None::<&str>)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn open_data_dir(app: AppHandle) -> CmdResult<()> {
     let path = app.state::<AppState>().paths.data.display().to_string();
-    app.opener().open_path(path, None::<&str>).map_err(|e| e.to_string())
+    app.opener()
+        .open_path(path, None::<&str>)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

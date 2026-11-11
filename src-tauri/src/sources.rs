@@ -7,7 +7,17 @@ use serde::Serialize;
 use crate::model::{Source, SourceKind};
 
 /// Mots d'en-tête de colonnes à ignorer quand un fichier contient des codes nus.
-const HEADER_WORDS: [&str; 9] = ["url", "urls", "code", "codes", "giveaway", "giveaways", "link", "lien", "liens"];
+const HEADER_WORDS: [&str; 9] = [
+    "url",
+    "urls",
+    "code",
+    "codes",
+    "giveaway",
+    "giveaways",
+    "link",
+    "lien",
+    "liens",
+];
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -76,12 +86,19 @@ pub fn parse_list(text: &str) -> Vec<String> {
 
 /// Lit le JSON communautaire { "alive": [...], "dead": [...] }.
 pub fn parse_alive_json(text: &str) -> Result<(Vec<String>, Vec<String>), String> {
-    let value: serde_json::Value = serde_json::from_str(text).map_err(|e| format!("JSON invalide : {e}"))?;
+    let value: serde_json::Value =
+        serde_json::from_str(text).map_err(|e| format!("JSON invalide : {e}"))?;
     let read = |key: &str| -> Vec<String> {
         value
             .get(key)
             .and_then(|v| v.as_array())
-            .map(|items| items.iter().filter_map(|i| i.as_str()).filter_map(extract_code).collect())
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|i| i.as_str())
+                    .filter_map(extract_code)
+                    .collect()
+            })
             .unwrap_or_default()
     };
     if value.get("alive").is_none() {
@@ -127,7 +144,9 @@ pub async fn fetch_all(client: &Client, sources: &[Source]) -> FetchOutcome {
                     count: alive.len(),
                     error: None,
                 });
-                outcome.codes.extend(alive.into_iter().map(|c| (c, source.id.clone())));
+                outcome
+                    .codes
+                    .extend(alive.into_iter().map(|c| (c, source.id.clone())));
                 outcome.dead.extend(dead);
             }
             Err(error) => outcome.results.push(SourceResult {
@@ -140,15 +159,24 @@ pub async fn fetch_all(client: &Client, sources: &[Source]) -> FetchOutcome {
         }
     }
     // Un code présent dans une liste « vivante » ne doit pas être marqué mort par une autre.
-    let alive: std::collections::HashSet<String> =
-        outcome.codes.iter().map(|(c, _)| c.to_ascii_uppercase()).collect();
-    outcome.dead.retain(|c| !alive.contains(&c.to_ascii_uppercase()));
+    let alive: std::collections::HashSet<String> = outcome
+        .codes
+        .iter()
+        .map(|(c, _)| c.to_ascii_uppercase())
+        .collect();
+    outcome
+        .dead
+        .retain(|c| !alive.contains(&c.to_ascii_uppercase()));
     outcome
 }
 
 /// Devine le type d'une source ajoutée par l'utilisateur à partir de son URL.
 pub fn guess_kind(url: &str) -> SourceKind {
-    let path = url.split(['?', '#']).next().unwrap_or(url).to_ascii_lowercase();
+    let path = url
+        .split(['?', '#'])
+        .next()
+        .unwrap_or(url)
+        .to_ascii_lowercase();
     if path.ends_with(".json") {
         SourceKind::AliveJson
     } else {
@@ -162,12 +190,24 @@ mod tests {
 
     #[test]
     fn extracts_codes_from_urls_and_plain_codes() {
-        assert_eq!(extract_code("https://www.instant-gaming.com/fr/giveaway/TOMBIE"), Some("TOMBIE".into()));
-        assert_eq!(extract_code("https://www.instant-gaming.com/fr/giveaway/TOMBIE#"), Some("TOMBIE".into()));
-        assert_eq!(extract_code("  \"https://instant-gaming.com/en/giveaway/muusoo?x=1\" "), Some("muusoo".into()));
+        assert_eq!(
+            extract_code("https://www.instant-gaming.com/fr/giveaway/TOMBIE"),
+            Some("TOMBIE".into())
+        );
+        assert_eq!(
+            extract_code("https://www.instant-gaming.com/fr/giveaway/TOMBIE#"),
+            Some("TOMBIE".into())
+        );
+        assert_eq!(
+            extract_code("  \"https://instant-gaming.com/en/giveaway/muusoo?x=1\" "),
+            Some("muusoo".into())
+        );
         assert_eq!(extract_code("MFGAMING"), Some("MFGAMING".into()));
         assert_eq!(extract_code("Seals311"), Some("Seals311".into()));
-        assert_eq!(extract_code("https://evil.example.com/giveaway/TOMBIE"), None);
+        assert_eq!(
+            extract_code("https://evil.example.com/giveaway/TOMBIE"),
+            None
+        );
         assert_eq!(extract_code("https://www.instant-gaming.com/fr/"), None);
         assert_eq!(extract_code("url"), None);
         assert_eq!(extract_code(""), None);
@@ -177,12 +217,16 @@ mod tests {
     #[test]
     fn parses_csv_lines() {
         let text = "url\nhttps://www.instant-gaming.com/fr/giveaway/ICONOBLAST\n\nPIVI;note\nhttps://example.com/x\n";
-        assert_eq!(parse_list(text), vec!["ICONOBLAST".to_string(), "PIVI".to_string()]);
+        assert_eq!(
+            parse_list(text),
+            vec!["ICONOBLAST".to_string(), "PIVI".to_string()]
+        );
     }
 
     #[test]
     fn parses_alive_json() {
-        let (alive, dead) = parse_alive_json(r#"{"alive":["BOBLENNON","bugland"],"dead":["OLD"]}"#).unwrap();
+        let (alive, dead) =
+            parse_alive_json(r#"{"alive":["BOBLENNON","bugland"],"dead":["OLD"]}"#).unwrap();
         assert_eq!(alive, vec!["BOBLENNON".to_string(), "bugland".to_string()]);
         assert_eq!(dead, vec!["OLD".to_string()]);
         assert!(parse_alive_json(r#"{"foo":1}"#).is_err());

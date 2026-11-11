@@ -2,25 +2,25 @@
   import Icon from '../lib/Icon.svelte';
   import Ring from '../lib/Ring.svelte';
   import { api, type SessionMode } from '../lib/api';
-  import { app, duration, fail, saveSettings, t, updateLists } from '../lib/state.svelte';
+  import { app, duration, fail, minDelay, saveSettings, t, updateLists, SAFE_MIN_DELAY } from '../lib/state.svelte';
 
   type Step = 'connect' | 'waiting' | 'check' | 'ready';
   let step = $state<Step>('connect');
   let verifying = $state(false);
   let notConnected = $state(false);
   let mode = $state<SessionMode>('auto');
-  let seconds = $state(app.overview?.settings.secondsPerGiveaway ?? 4);
+  let seconds = $state(app.overview?.settings.secondsPerGiveaway ?? SAFE_MIN_DELAY);
+  const min = $derived(minDelay(app.overview?.settings));
 
   const stepIndex = $derived(step === 'connect' || step === 'waiting' ? 0 : step === 'check' ? 1 : 2);
   const connected = $derived(app.overview?.settings.accountConnected ?? false);
   const counts = $derived(app.overview?.counts);
   const estimate = $derived.by(() => {
     const queue = counts?.queue ?? 0;
-    const settings = app.overview?.settings;
-    if (mode === 'manual') return queue * seconds;
-    const limit = settings?.sessionLimit ?? 0;
+    const pace = Math.max(seconds, min);
+    if (mode === 'manual') return queue * pace;
+    const limit = app.overview?.settings.sessionLimit ?? 0;
     const count = limit > 0 ? Math.min(queue, limit) : queue;
-    const pace = settings?.safeMode ? Math.max(seconds, 8) : seconds;
     return count * (pace + 3);
   });
 
@@ -176,7 +176,7 @@
       </div>
       <div class="choice">
         <label class="label" for="onb-delay">{t('set.delay')} · <span class="serif num-inline">{seconds} s</span></label>
-        <input id="onb-delay" type="range" min="2" max="15" step="1" bind:value={seconds} />
+        <input id="onb-delay" type="range" {min} max="15" step="1" bind:value={seconds} />
         {#if (counts?.queue ?? 0) > 0}
           <span class="faint small">{duration(estimate)}</span>
         {/if}

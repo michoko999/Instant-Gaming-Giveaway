@@ -20,6 +20,7 @@ Giveaway IG is a **portable** Windows app (no installer) that fetches the Instan
 - **Automatic mode**: sign in to your account once in the built-in Instant Gaming window. The app then opens each giveaway and clicks “Participate” for you.
   - If the site asks for a human verification (captcha), the giveaway is set aside for you to handle at the end. **The app never solves or bypasses captchas.**
   - If your account gets signed out, the session pauses until you sign in again.
+  - The Instant Gaming window stays hidden while it works; “Watch the page live” shows it whenever you want (closing it just hides it again).
 - **Manual mode**: giveaways open one by one; click “Participate” and the app moves on as soon as it notices.
 - **Always up-to-date lists**: two built-in community lists, plus your own files (CSV, TXT, JSON) or online lists.
 - **Fast checking**: hundreds of giveaways tested in parallel in under a minute.

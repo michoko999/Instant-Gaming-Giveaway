@@ -48,7 +48,11 @@ impl AppPaths {
             }
         };
         let webview = data.join("webview");
-        AppPaths { data, webview, portable }
+        AppPaths {
+            data,
+            webview,
+            portable,
+        }
     }
 
     pub fn request_webview_reset(&self) {
@@ -94,6 +98,8 @@ pub struct AppState {
     pub reports: Mutex<Option<UnboundedSender<Report>>>,
     /// Script injecté à chaque page chargée dans la fenêtre Instant Gaming.
     pub ig_script: Mutex<Option<String>>,
+    /// Fermer la fenêtre Instant Gaming la cache au lieu de la fermer (session automatique en cours).
+    pub ig_hide_on_close: AtomicBool,
 }
 
 impl AppState {
@@ -106,6 +112,7 @@ impl AppState {
             session: Mutex::new(None),
             reports: Mutex::new(None),
             ig_script: Mutex::new(None),
+            ig_hide_on_close: AtomicBool::new(false),
         }
     }
 
@@ -119,7 +126,10 @@ impl AppState {
 
     pub fn send_control(&self, control: Control) -> bool {
         match self.session.lock() {
-            Ok(guard) => guard.as_ref().map(|tx| tx.send(control).is_ok()).unwrap_or(false),
+            Ok(guard) => guard
+                .as_ref()
+                .map(|tx| tx.send(control).is_ok())
+                .unwrap_or(false),
             Err(_) => false,
         }
     }

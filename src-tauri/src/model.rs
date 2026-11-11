@@ -9,6 +9,9 @@ pub const LANGUAGES: [&str; 7] = ["fr", "en", "es", "de", "pt", "it", "pl"];
 
 pub const DEFAULT_ACCENT: &str = "#FFD27A";
 
+/// Mode prudent : temps minimum entre deux concours.
+pub const SAFE_MIN_DELAY: f64 = 8.0;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum SessionMode {
@@ -115,6 +118,8 @@ pub struct Settings {
     pub safe_mode: bool,
     /// Nombre maximal de concours par session automatique (0 = illimité).
     pub session_limit: u32,
+    /// Afficher la fenêtre Instant Gaming pendant les sessions automatiques (sinon elle reste cachée).
+    pub show_ig_window: bool,
     pub accent: String,
     pub sky_animation: bool,
     pub sync_on_start: bool,
@@ -129,10 +134,11 @@ impl Default for Settings {
         Settings {
             language: "fr".into(),
             mode: SessionMode::Auto,
-            seconds_per_giveaway: 4.0,
+            seconds_per_giveaway: SAFE_MIN_DELAY,
             skip_done_this_month: true,
             safe_mode: true,
             session_limit: 40,
+            show_ig_window: false,
             accent: DEFAULT_ACCENT.into(),
             sky_animation: true,
             sync_on_start: true,
@@ -151,9 +157,12 @@ impl Settings {
             self.language = "en".into();
         }
         if !self.seconds_per_giveaway.is_finite() {
-            self.seconds_per_giveaway = 4.0;
+            self.seconds_per_giveaway = SAFE_MIN_DELAY;
         }
         self.seconds_per_giveaway = self.seconds_per_giveaway.clamp(2.0, 30.0);
+        if self.safe_mode {
+            self.seconds_per_giveaway = self.seconds_per_giveaway.max(SAFE_MIN_DELAY);
+        }
         if self.session_limit > 0 {
             self.session_limit = self.session_limit.clamp(5, 500);
         }
@@ -170,7 +179,8 @@ impl Settings {
                 None => self.sources.insert(0, builtin),
             }
         }
-        self.sources.retain(|s| s.builtin || s.url.starts_with("https://"));
+        self.sources
+            .retain(|s| s.builtin || s.url.starts_with("https://"));
         let mut seen = std::collections::HashSet::new();
         self.sources.retain(|s| seen.insert(s.id.clone()));
     }
@@ -260,4 +270,42 @@ pub struct Stats {
     pub this_month: usize,
     /// Concours différents déjà faits ce mois-ci.
     pub done_this_month: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn careful_mode_enforces_minimum_delay() {
+        let mut settings = Settings {
+            seconds_per_giveaway: 3.0,
+            safe_mode: true,
+            ..Settings::default()
+        };
+        settings.sanitize();
+        assert_eq!(settings.seconds_per_giveaway, SAFE_MIN_DELAY);
+
+        let mut settings = Settings {
+            seconds_per_giveaway: 3.0,
+            safe_mode: false,
+            ..Settings::default()
+        };
+        settings.sanitize();
+        assert_eq!(settings.seconds_per_giveaway, 3.0);
+
+        let mut settings = Settings {
+            seconds_per_giveaway: f64::NAN,
+            ..Settings::default()
+        };
+        settings.sanitize();
+        assert_eq!(settings.seconds_per_giveaway, SAFE_MIN_DELAY);
+    }
+
+    #[test]
+    fn ig_window_hidden_by_default() {
+        let settings: Settings = serde_json::from_str("{}").unwrap();
+        assert!(!settings.show_ig_window);
+        assert!(settings.safe_mode);
+    }
 }

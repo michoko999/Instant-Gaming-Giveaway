@@ -23,6 +23,7 @@ export interface Settings {
   skipDoneThisMonth: boolean;
   safeMode: boolean;
   sessionLimit: number;
+  showIgWindow: boolean;
   accent: string;
   skyAnimation: boolean;
   syncOnStart: boolean;

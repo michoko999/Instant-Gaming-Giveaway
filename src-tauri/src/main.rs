@@ -34,6 +34,7 @@ fn main() {
                 .center()
                 .theme(Some(tauri::Theme::Dark))
                 .data_directory(webview_dir)
+                .additional_browser_args(automation::BROWSER_ARGS)
                 .build()?;
             Ok(())
         })

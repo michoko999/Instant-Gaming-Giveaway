@@ -4,7 +4,8 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
-const LATEST_RELEASE: &str = "https://api.github.com/repos/michoko999/Instant-Gaming-Giveaway/releases/latest";
+const LATEST_RELEASE: &str =
+    "https://api.github.com/repos/michoko999/Instant-Gaming-Giveaway/releases/latest";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -53,7 +54,12 @@ pub async fn check(client: &Client) -> Result<UpdateInfo, String> {
         _ => false,
     };
     let available = newer && !release.draft && !release.prerelease;
-    Ok(UpdateInfo { current, latest: Some(release.tag_name), available, url: Some(release.html_url) })
+    Ok(UpdateInfo {
+        current,
+        latest: Some(release.tag_name),
+        available,
+        url: Some(release.html_url),
+    })
 }
 
 #[cfg(test)]

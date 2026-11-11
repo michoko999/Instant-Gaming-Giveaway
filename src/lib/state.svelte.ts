@@ -125,6 +125,14 @@ export async function refresh() {
   return overview;
 }
 
+/** Mode prudent : temps minimum entre deux concours (même valeur que côté Rust). */
+export const SAFE_MIN_DELAY = 8;
+
+/** Plus petit temps par concours autorisé avec ces réglages. */
+export function minDelay(settings: Settings | undefined | null): number {
+  return settings?.safeMode ?? true ? SAFE_MIN_DELAY : 2;
+}
+
 export async function saveSettings(patch: Partial<Settings>) {
   if (!app.overview) return;
   try {
