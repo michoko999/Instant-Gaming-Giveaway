@@ -6,6 +6,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use reqwest::Client;
+use serde::Serialize;
 use tauri::{AppHandle, Manager};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -25,18 +26,64 @@ const PROFILES_DIR: &str = "profiles";
 const USER_AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
 
+/// Comment l'application a été installée.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Setup {
+    /// Fichier seul (exe ou AppImage) : données à côté, dans `GiveawayIG-data`.
+    Portable,
+    /// Installateur Windows : données dans le dossier de l'utilisateur (`%LOCALAPPDATA%`).
+    Installed,
+    /// Installée avec Scoop : données à côté de l'exe, conservées par Scoop entre versions.
+    Scoop,
+}
+
+/// Type d'installation d'après l'emplacement de l'exécutable.
+pub fn setup_of(exe: &Path) -> Setup {
+    let lower = exe.to_string_lossy().replace('\\', "/").to_lowercase();
+    let in_scoop_root = std::env::var_os("SCOOP")
+        .map(|root| {
+            let root = root.to_string_lossy().replace('\\', "/").to_lowercase();
+            !root.is_empty() && lower.starts_with(&format!("{}/apps/", root.trim_end_matches('/')))
+        })
+        .unwrap_or(false);
+    if in_scoop_root || lower.contains("/scoop/apps/") {
+        return Setup::Scoop;
+    }
+    // L'installateur range `uninstall.exe` à côté du programme.
+    if cfg!(windows)
+        && exe
+            .parent()
+            .is_some_and(|dir| dir.join("uninstall.exe").is_file())
+    {
+        return Setup::Installed;
+    }
+    Setup::Portable
+}
+
+/// Type d'installation de l'application en cours.
+pub fn current_setup() -> Setup {
+    std::env::current_exe()
+        .map(|exe| setup_of(&exe))
+        .unwrap_or(Setup::Portable)
+}
+
 #[derive(Debug, Clone)]
 pub struct AppPaths {
     pub data: PathBuf,
     pub webview: PathBuf,
     pub portable: bool,
+    pub setup: Setup,
 }
 
 impl AppPaths {
     /// Dossier à côté de l'exécutable s'il est accessible en écriture (mode portable),
-    /// sinon le dossier de données local de l'utilisateur.
+    /// sinon le dossier de données local de l'utilisateur (version installée, ou dossier
+    /// de l'exécutable en lecture seule).
     pub fn resolve(app: &AppHandle) -> AppPaths {
+        let setup = current_setup();
         let portable_dir = portable_base()
+            .filter(|_| setup != Setup::Installed)
             .map(|dir| dir.join(PORTABLE_DIR))
             .filter(|dir| is_writable_dir(dir));
         let (data, portable) = match portable_dir {
@@ -55,6 +102,7 @@ impl AppPaths {
             data,
             webview,
             portable,
+            setup,
         }
     }
 
@@ -219,6 +267,20 @@ impl AppState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn recognises_scoop_installs() {
+        assert_eq!(
+            setup_of(Path::new(
+                r"C:\Users\me\scoop\apps\giveaway-ig\current\GiveawayIG.exe"
+            )),
+            Setup::Scoop
+        );
+        assert_eq!(
+            setup_of(Path::new("/home/me/Apps/GiveawayIG-x86_64.AppImage")),
+            Setup::Portable
+        );
+    }
 
     #[test]
     fn portable_folder_sits_next_to_the_app_file() {

@@ -53,7 +53,7 @@ jobs:
           fi
 
   windows:
-    name: Exécutable Windows
+    name: Windows (exe et installateur)
     needs: prepare
     runs-on: windows-latest
     steps:
@@ -68,19 +68,23 @@ jobs:
 
       - run: npm ci
 
-      - name: Compilation
-        run: npx tauri build --no-bundle
+      - name: Compilation (exe et installateur)
+        run: npx tauri build --bundles nsis
 
-      - name: Exécutable portable
+      - name: Exécutable portable et installateur
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
           Copy-Item src-tauri/target/release/giveaway-ig.exe out/GiveawayIG.exe
+          $setup = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          Copy-Item $setup.FullName out/GiveawayIG-setup.exe
 
       - uses: actions/upload-artifact@v7
         with:
           name: release-windows
-          path: out/GiveawayIG.exe
+          path: |
+            out/GiveawayIG.exe
+            out/GiveawayIG-setup.exe
           retention-days: 7
 
   linux:
@@ -137,8 +141,9 @@ jobs:
         run: |
           cd out
           chmod +x GiveawayIG-x86_64.AppImage
-          sha256sum GiveawayIG.exe GiveawayIG-x86_64.AppImage > SHA256SUMS.txt
+          sha256sum GiveawayIG-setup.exe GiveawayIG.exe GiveawayIG-x86_64.AppImage > SHA256SUMS.txt
           cat SHA256SUMS.txt
+          echo "setup=$(sha256sum GiveawayIG-setup.exe | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "windows=$(sha256sum GiveawayIG.exe | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "linux=$(sha256sum GiveawayIG-x86_64.AppImage | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
@@ -146,6 +151,7 @@ jobs:
       - uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
+            out/GiveawayIG-setup.exe
             out/GiveawayIG.exe
             out/GiveawayIG-x86_64.AppImage
 
@@ -157,6 +163,7 @@ jobs:
           make_latest: ${{ github.event_name == 'workflow_dispatch' && !inputs.draft }}
           name: Giveaway IG ${{ needs.prepare.outputs.tag }}
           files: |
+            out/GiveawayIG-setup.exe
             out/GiveawayIG.exe
             out/GiveawayIG-x86_64.AppImage
             out/SHA256SUMS.txt
@@ -165,11 +172,17 @@ jobs:
 
             | | Fichier · File |
             |:--|:--|
-            | 🪟 **Windows 10 / 11** | `GiveawayIG.exe` |
+            | 🪟 **Windows 10 / 11** : installateur · *installer* | `GiveawayIG-setup.exe` |
+            | 🪟 **Windows 10 / 11** : portable | `GiveawayIG.exe` |
             | 🐧 **Linux** (x86_64) | `GiveawayIG-x86_64.AppImage` |
 
-            **Windows** : application portable, sans installation. Range `GiveawayIG.exe` dans un dossier à toi (par exemple `Documents\GiveawayIG`) : tes réglages seront enregistrés à côté, dans `GiveawayIG-data`.
+            **Windows, installateur** : lance `GiveawayIG-setup.exe`. Pas besoin de droits administrateur ; l'application arrive dans le menu Démarrer et se désinstalle depuis les Paramètres de Windows.
+            *Installer: run `GiveawayIG-setup.exe`. No admin rights needed; the app appears in the Start menu and can be uninstalled from Windows Settings.*
+
+            **Windows, portable** : sans installation. Range `GiveawayIG.exe` dans un dossier à toi (par exemple `Documents\GiveawayIG`) : tes réglages seront enregistrés à côté, dans `GiveawayIG-data`.
             *Portable app, no installation: put `GiveawayIG.exe` in a folder of your own; your settings are saved next to it, in `GiveawayIG-data`.*
+
+            **Scoop** : `scoop bucket add giveaway-ig https://github.com/${{ github.repository }}` puis · *then* `scoop install giveaway-ig`.
 
             **Linux** : rends le fichier exécutable puis lance-le · *make the file executable, then run it*:
             ```bash
@@ -179,6 +192,7 @@ jobs:
             Les réglages sont enregistrés à côté du fichier, dans `GiveawayIG-data` · *settings are saved next to the file.*
 
             ### Vérifier les fichiers · Check the files
+            - `GiveawayIG-setup.exe` : `${{ steps.hash.outputs.setup }}`
             - `GiveawayIG.exe` : `${{ steps.hash.outputs.windows }}`
             - `GiveawayIG-x86_64.AppImage` : `${{ steps.hash.outputs.linux }}`
             - Provenance : `gh attestation verify <fichier> --repo ${{ github.repository }}`
@@ -188,3 +202,51 @@ jobs:
             Documentation : [README](https://github.com/${{ github.repository }}#readme) (7 langues · 7 languages) · [Code signing policy](https://github.com/${{ github.repository }}/blob/main/docs/CODE_SIGNING_POLICY.md).
 
             Projet open source, non affilié à Instant Gaming · *Open source project, not affiliated with Instant Gaming.*
+
+      # Bucket Scoop : `bucket/giveaway-ig.json` est mis à jour sur main après chaque publication,
+      # pour que `scoop update giveaway-ig` propose la nouvelle version.
+      - uses: actions/checkout@v7
+        if: github.event_name == 'workflow_dispatch' && !inputs.draft
+        with:
+          ref: main
+          path: repo
+
+      - name: Manifeste Scoop
+        if: github.event_name == 'workflow_dispatch' && !inputs.draft
+        continue-on-error: true
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          HASH: ${{ steps.hash.outputs.windows }}
+          REPO: ${{ github.repository }}
+        working-directory: repo
+        run: |
+          mkdir -p bucket
+          python3 - <<'PY'
+          import json, os
+          tag, repo = os.environ["TAG"], os.environ["REPO"]
+          base = f"https://github.com/{repo}/releases/download"
+          manifest = {
+              "version": tag.lstrip("v"),
+              "description": "Keeps track of Instant Gaming giveaways and helps you enter them every month (automatic or manual mode).",
+              "homepage": f"https://github.com/{repo}",
+              "license": "MIT",
+              "architecture": {"64bit": {"url": f"{base}/{tag}/GiveawayIG.exe", "hash": os.environ["HASH"]}},
+              "shortcuts": [["GiveawayIG.exe", "Giveaway IG"]],
+              "persist": "GiveawayIG-data",
+              "checkver": {"github": f"https://github.com/{repo}"},
+              "autoupdate": {
+                  "architecture": {"64bit": {"url": f"{base}/v$version/GiveawayIG.exe"}},
+                  "hash": {"url": "$baseurl/SHA256SUMS.txt"},
+              },
+          }
+          with open("bucket/giveaway-ig.json", "w", encoding="utf-8") as f:
+              json.dump(manifest, f, indent=4, ensure_ascii=False)
+              f.write("\n")
+          PY
+          cat bucket/giveaway-ig.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bucket/giveaway-ig.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Scoop : giveaway-ig ${TAG}"
+          git push origin HEAD:main

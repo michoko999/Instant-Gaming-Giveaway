@@ -122,6 +122,8 @@ export interface Overview {
   version: string;
   dataDir: string;
   portable: boolean;
+  /** Fichier seul, installateur Windows ou Scoop. */
+  setup: 'portable' | 'installed' | 'scoop';
   sessionRunning: boolean;
   busy: boolean;
 }
@@ -213,6 +215,17 @@ export interface UpdateInfo {
   url: string | null;
   /** La mise à jour peut être installée depuis l'application. */
   canInstall: boolean;
+  /** Gestionnaire qui fait les mises à jour à la place de l'application. */
+  manager: string | null;
+}
+
+export interface BackupInfo {
+  id: string;
+  createdAt: string;
+  /** Version qui utilisait ces données (inconnue avant la 2.1.0). */
+  fromVersion: string | null;
+  toVersion: string;
+  reason: 'update' | 'restore';
 }
 
 export interface UpdateProgress {
@@ -251,6 +264,9 @@ export const api = {
   showIgWindow: () => invoke<boolean>('show_ig_window'),
   openExternal: (url: string) => invoke<void>('open_external', { url }),
   openDataDir: () => invoke<void>('open_data_dir'),
+  listBackups: () => invoke<BackupInfo[]>('list_backups'),
+  restoreBackup: (id: string) => invoke<void>('restore_backup', { id }),
+  problemReport: () => invoke<string>('problem_report'),
   checkUpdate: () => invoke<UpdateInfo>('check_update'),
   installUpdate: () => invoke<void>('install_update'),
 };

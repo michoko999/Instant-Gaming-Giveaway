@@ -1,13 +1,14 @@
 <script lang="ts">
   import Avatar from '../lib/Avatar.svelte';
   import Icon from '../lib/Icon.svelte';
-  import { api, REPO_URL, type Lang, type Source } from '../lib/api';
+  import { api, REPO_URL, type BackupInfo, type Lang, type Source } from '../lib/api';
   import {
     ACCENTS,
     LANGUAGES,
     accountName,
     addAccount,
     app,
+    dateTime,
     fail,
     logoutAccount,
     minDelay,
@@ -17,6 +18,7 @@
     saveSettings,
     switchAccount,
     t,
+    reportProblem,
     toast,
     verifyLogin,
     SAFE_MIN_DELAY,
@@ -67,6 +69,37 @@
       fail(e);
     }
   }
+
+  // Sauvegardes automatiques (avant chaque nouvelle version) : restauration d'un second clic.
+  let backups = $state<BackupInfo[]>([]);
+  let confirmRestore = $state<string | null>(null);
+  let restoreTimer: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => {
+    api
+      .listBackups()
+      .then((list) => (backups = list))
+      .catch(() => (backups = []));
+  });
+  function backupLabel(b: BackupInfo): string {
+    return b.reason === 'restore' ? t('set.backupBeforeRestore') : t('set.backupBeforeVersion', { v: b.toVersion });
+  }
+  async function askRestore(id: string) {
+    if (confirmRestore !== id) {
+      confirmRestore = id;
+      clearTimeout(restoreTimer);
+      restoreTimer = setTimeout(() => (confirmRestore = null), 5000);
+      return;
+    }
+    confirmRestore = null;
+    try {
+      await api.restoreBackup(id);
+    } catch (e) {
+      fail(e);
+    }
+  }
+  const dataLabel = $derived(
+    o?.setup === 'installed' ? t('set.installed') : o?.setup === 'scoop' ? t('set.scoop') : o?.portable ? t('set.portable') : t('set.notPortable'),
+  );
 
   async function removeSource(id: string) {
     try {
@@ -292,7 +325,7 @@
           <h2>{t('set.data')}</h2>
           <div class="line">
             <span class="stack min0">
-              <span>{o.portable ? t('set.portable') : t('set.notPortable')}</span>
+              <span>{dataLabel}</span>
               <span class="mono faint small ellipsis">{o.dataDir}</span>
             </span>
             <button type="button" class="btn btn-sm" onclick={() => api.openDataDir().catch(fail)}><Icon name="folder" size={14} />{t('set.openFolder')}</button>
@@ -301,6 +334,23 @@
             <span>{t('set.updates')}</span>
             <input type="checkbox" class="switch" checked={s.checkUpdates} onchange={() => saveSettings({ checkUpdates: !s.checkUpdates })} />
           </label>
+          <div class="line backups">
+            <span class="stack min0">
+              <span>{t('set.backups')}</span>
+              <span class="faint small">{backups.length > 0 ? t('set.backupsHint') : t('set.backupsNone')}</span>
+            </span>
+            {#each backups as b (b.id)}
+              <div class="backup">
+                <span class="stack min0">
+                  <span class="small">{dateTime(b.createdAt)}</span>
+                  <span class="faint small">{backupLabel(b)}</span>
+                </span>
+                <button type="button" class="btn btn-sm" class:danger={confirmRestore === b.id} onclick={() => askRestore(b.id)}>
+                  <Icon name="refresh" size={14} />{confirmRestore === b.id ? t('set.restoreConfirm') : t('set.restore')}
+                </button>
+              </div>
+            {/each}
+          </div>
         </section>
 
         <section class="card glass">
@@ -310,6 +360,13 @@
             <button type="button" class="btn btn-sm" onclick={() => api.openExternal(REPO_URL).catch(fail)}>
               <Icon name="external" size={14} />{t('set.github')}
             </button>
+          </div>
+          <div class="line">
+            <span class="stack min0">
+              <span>{t('set.report')}</span>
+              <span class="faint small">{t('set.reportHint')}</span>
+            </span>
+            <button type="button" class="btn btn-sm" onclick={reportProblem}><Icon name="alert" size={14} />{t('set.reportButton')}</button>
           </div>
           <p class="faint small foot">{t('footer.notAffiliated')}</p>
         </section>
@@ -372,6 +429,17 @@
   }
   label.line {
     cursor: pointer;
+  }
+  .backups {
+    align-items: stretch;
+  }
+  .backup {
+    flex: 1 1 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0 0;
   }
   .stack {
     display: flex;

@@ -1,15 +1,18 @@
-//! Mises à jour : vérifie la dernière version publiée sur GitHub et, sous Windows, l'installe
-//! en un clic.
+//! Mises à jour : vérifie la dernière version publiée sur GitHub et l'installe en un clic.
 //!
 //! L'installation reste volontairement simple (rien de caché, rien en arrière-plan) :
-//! 1. téléchargement de `GiveawayIG.exe` et de `SHA256SUMS.txt` depuis la release GitHub ;
+//! 1. téléchargement du bon fichier de la release GitHub et de `SHA256SUMS.txt` ;
 //! 2. vérification de la taille et de l'empreinte SHA-256 publiée ;
-//! 3. l'exécutable en cours est renommé en `….old` (Windows le permet), le nouveau prend sa
-//!    place, puis il est lancé et l'ancien processus se ferme ;
-//! 4. au démarrage suivant, le fichier `….old` est supprimé.
+//! 3. version portable (exe Windows ou AppImage Linux) : le fichier en cours est renommé en
+//!    `….old`, le nouveau prend sa place, puis il est lancé et l'ancien processus se ferme ;
+//!    version installée : le nouvel installateur est lancé en mode « mise à jour » (barre de
+//!    progression, sans question), puis il relance l'application ;
+//! 4. au démarrage suivant, les restes (`….old`, installateur téléchargé) sont supprimés.
 //!
-//! L'empreinte vient de la même release que l'exécutable : elle garantit que le fichier est
-//! complet et identique à celui publié, comme un téléchargement manuel depuis la page.
+//! Une installation faite avec Scoop se met à jour avec Scoop (`scoop update giveaway-ig`).
+//!
+//! L'empreinte vient de la même release que le fichier : elle garantit qu'il est complet et
+//! identique à celui publié, comme un téléchargement manuel depuis la page.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -18,6 +21,8 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+use crate::state::Setup;
+
 const LATEST_RELEASE: &str =
     "https://api.github.com/repos/michoko999/Instant-Gaming-Giveaway/releases/latest";
 /// Seuls les fichiers des releases de ce dépôt sont acceptés.
@@ -25,11 +30,15 @@ const DOWNLOAD_PREFIX: &str =
     "https://github.com/michoko999/instant-gaming-giveaway/releases/download/";
 const EXE_ASSET: &str = "GiveawayIG.exe";
 const APPIMAGE_ASSET: &str = "GiveawayIG-x86_64.AppImage";
+const SETUP_ASSET: &str = "GiveawayIG-setup.exe";
+/// Options de l'installateur : progression seule, mise à jour, relance de l'application.
+pub const SETUP_ARGS: [&str; 3] = ["/P", "/UPDATE", "/R"];
 
 /// Ce que la mise à jour remplace sur cette machine.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     WindowsExe,
+    WindowsSetup,
     LinuxAppImage,
 }
 
@@ -37,6 +46,7 @@ impl Kind {
     fn asset(self) -> &'static str {
         match self {
             Kind::WindowsExe => EXE_ASSET,
+            Kind::WindowsSetup => SETUP_ASSET,
             Kind::LinuxAppImage => APPIMAGE_ASSET,
         }
     }
@@ -44,19 +54,23 @@ impl Kind {
     /// Début obligatoire du fichier : exécutable Windows (MZ) ou Linux (ELF).
     fn magic(self) -> &'static [u8] {
         match self {
-            Kind::WindowsExe => b"MZ",
+            Kind::WindowsExe | Kind::WindowsSetup => b"MZ",
             Kind::LinuxAppImage => b"\x7fELF",
         }
     }
 }
 
-/// Type de mise à jour possible ici et fichier à remplacer : l'exécutable sous Windows,
-/// le fichier `.AppImage` sous Linux (indiqué par la variable `APPIMAGE`).
+/// Type de mise à jour possible ici et fichier concerné : l'exécutable (portable) ou
+/// l'installateur (version installée) sous Windows, le fichier `.AppImage` sous Linux
+/// (indiqué par la variable `APPIMAGE`). Rien pour une installation Scoop.
 pub fn local_target() -> Option<(Kind, PathBuf)> {
     if cfg!(windows) {
-        return std::env::current_exe()
-            .ok()
-            .map(|path| (Kind::WindowsExe, path));
+        let exe = std::env::current_exe().ok()?;
+        return match crate::state::setup_of(&exe) {
+            Setup::Scoop => None,
+            Setup::Installed => Some((Kind::WindowsSetup, exe)),
+            Setup::Portable => Some((Kind::WindowsExe, exe)),
+        };
     }
     if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
         return std::env::var_os("APPIMAGE")
@@ -79,8 +93,10 @@ pub struct UpdateInfo {
     pub latest: Option<String>,
     pub available: bool,
     pub url: Option<String>,
-    /// La mise à jour peut être installée depuis l'application (Windows, fichiers présents).
+    /// La mise à jour peut être installée depuis l'application (fichiers présents).
     pub can_install: bool,
+    /// Gestionnaire qui s'occupe des mises à jour à la place de l'application (« scoop »).
+    pub manager: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -147,6 +163,7 @@ pub fn info(release: &Release) -> UpdateInfo {
             && local_target()
                 .map(|(kind, _)| files(release, kind).is_some())
                 .unwrap_or(false),
+        manager: (crate::state::current_setup() == Setup::Scoop).then(|| "scoop".to_string()),
     }
 }
 
@@ -287,6 +304,36 @@ pub fn replace(exe: &Path, bytes: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
+/// Dossier où l'installateur téléchargé attend d'être lancé (version installée).
+fn downloads_dir(data: &Path) -> PathBuf {
+    data.join("updates")
+}
+
+/// Enregistre l'installateur téléchargé dans le dossier de données et renvoie son chemin.
+pub fn stage_setup(data: &Path, bytes: &[u8]) -> Result<PathBuf, String> {
+    let dir = downloads_dir(data);
+    std::fs::create_dir_all(&dir).map_err(|_| "update-write".to_string())?;
+    let path = dir.join(SETUP_ASSET);
+    std::fs::write(&path, bytes).map_err(|_| "update-write".to_string())?;
+    Ok(path)
+}
+
+/// Au démarrage : supprime l'installateur d'une mise à jour terminée.
+pub fn cleanup_downloads(data: &Path) {
+    let dir = downloads_dir(data);
+    if dir.exists() {
+        std::thread::spawn(move || {
+            // L'installateur peut mettre un instant à se fermer après avoir relancé l'application.
+            for _ in 0..20 {
+                if std::fs::remove_dir_all(&dir).is_ok() || !dir.exists() {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(1000));
+            }
+        });
+    }
+}
+
 /// Au démarrage : supprime l'ancien exécutable laissé par une mise à jour.
 pub fn cleanup() {
     let Some(exe) = local_target()
@@ -363,6 +410,17 @@ mod tests {
             files(&both, Kind::LinuxAppImage).unwrap().0.name,
             APPIMAGE_ASSET
         );
+        both.assets.push(Asset {
+            name: SETUP_ASSET.into(),
+            browser_download_url: format!("{repo}v99.0.0/{SETUP_ASSET}"),
+            size: 10,
+        });
+        assert_eq!(
+            files(&both, Kind::WindowsSetup).unwrap().0.name,
+            SETUP_ASSET
+        );
+        // Une release sans installateur (la 2.0.x) ne propose rien à la version installée.
+        assert!(files(&release("v99.0.0", repo), Kind::WindowsSetup).is_none());
         // Une release sans AppImage (la 2.0.x) ne propose rien sous Linux.
         assert!(files(&release("v99.0.0", repo), Kind::LinuxAppImage).is_none());
         assert!(!info(&elsewhere).can_install);

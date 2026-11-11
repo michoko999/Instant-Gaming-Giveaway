@@ -434,6 +434,8 @@ pub struct Meta {
     pub seen_month: Option<String>,
     /// Dernière visite de l'écran Concours : les concours ajoutés après sont « nouveaux ».
     pub giveaways_seen_at: Option<DateTime<Utc>>,
+    /// Version de l'application qui a écrit ces données (sauvegarde avant mise à jour).
+    pub app_version: Option<String>,
 }
 
 /// Un compte de l'application apparaît parmi les gagnants d'un concours.
