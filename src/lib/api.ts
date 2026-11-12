@@ -222,7 +222,7 @@ export interface UpdateInfo {
 export interface BackupInfo {
   id: string;
   createdAt: string;
-  /** Version qui utilisait ces données (inconnue avant la 2.1.0). */
+  /** Version qui utilisait ces données (inconnue avant la 2.2.0). */
   fromVersion: string | null;
   toVersion: string;
   reason: 'update' | 'restore';

@@ -41,7 +41,7 @@ pub struct BackupInfo {
     #[serde(default)]
     pub id: String,
     pub created_at: DateTime<Utc>,
-    /// Version qui utilisait ces données (inconnue avant la 2.1.0).
+    /// Version qui utilisait ces données (inconnue avant la 2.2.0).
     pub from_version: Option<String>,
     /// Version lancée au moment de la sauvegarde.
     pub to_version: String,
