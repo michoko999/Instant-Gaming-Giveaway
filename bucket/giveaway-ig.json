@@ -1,0 +1,32 @@
+{
+    "version": "2.2.0",
+    "description": "Keeps track of Instant Gaming giveaways and helps you enter them every month (automatic or manual mode).",
+    "homepage": "https://github.com/michoko999/Instant-Gaming-Giveaway",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/michoko999/Instant-Gaming-Giveaway/releases/download/v2.2.0/GiveawayIG.exe",
+            "hash": "5c7a59dfe559779cfbed606ff9f6d2b33dd40331dd1cd3d4e0b4f47c825fb9d0"
+        }
+    },
+    "shortcuts": [
+        [
+            "GiveawayIG.exe",
+            "Giveaway IG"
+        ]
+    ],
+    "persist": "GiveawayIG-data",
+    "checkver": {
+        "github": "https://github.com/michoko999/Instant-Gaming-Giveaway"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/michoko999/Instant-Gaming-Giveaway/releases/download/v$version/GiveawayIG.exe"
+            }
+        },
+        "hash": {
+            "url": "$baseurl/SHA256SUMS.txt"
+        }
+    }
+}
