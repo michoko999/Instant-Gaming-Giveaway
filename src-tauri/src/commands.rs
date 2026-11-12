@@ -11,11 +11,12 @@ use tauri_plugin_opener::OpenerExt;
 use tokio::sync::mpsc::unbounded_channel;
 
 use crate::automation::{self, ScriptMode, Visibility};
+use crate::backup::{self, BackupInfo};
 use crate::checker::{self, giveaway_url};
 use crate::model::*;
 use crate::session::{self, Control};
 use crate::sources::{self, SourceResult};
-use crate::state::AppState;
+use crate::state::{AppState, Setup};
 use crate::store::csv_field;
 use crate::update::{self, UpdateInfo};
 
@@ -35,6 +36,7 @@ pub struct Overview {
     version: String,
     data_dir: String,
     portable: bool,
+    setup: Setup,
     session_running: bool,
     busy: bool,
 }
@@ -112,6 +114,7 @@ pub fn get_overview(state: State<'_, AppState>) -> CmdResult<Overview> {
         version: env!("CARGO_PKG_VERSION").to_string(),
         data_dir: state.paths.data.display().to_string(),
         portable: state.paths.portable,
+        setup: state.paths.setup,
         session_running: state.session_running(),
         busy: state.busy.load(Ordering::SeqCst),
     })
@@ -873,14 +876,23 @@ pub async fn install_update(app: AppHandle) -> CmdResult<()> {
         }
     })
     .await?;
-    // L'exe sous Windows, le fichier .AppImage sous Linux.
-    let exe = target;
-    update::replace(&exe, &bytes)?;
-    let mut relaunch = std::process::Command::new(&exe);
-    if let Some(dir) = exe.parent() {
-        relaunch.current_dir(dir);
+    if kind == update::Kind::WindowsSetup {
+        // Version installée : le nouvel installateur fait la mise à jour puis relance l'appli.
+        let setup = update::stage_setup(&state.paths.data, &bytes)?;
+        std::process::Command::new(&setup)
+            .args(update::SETUP_ARGS)
+            .spawn()
+            .map_err(|_| "update-restart".to_string())?;
+    } else {
+        // L'exe portable sous Windows, le fichier .AppImage sous Linux.
+        let exe = target;
+        update::replace(&exe, &bytes)?;
+        let mut relaunch = std::process::Command::new(&exe);
+        if let Some(dir) = exe.parent() {
+            relaunch.current_dir(dir);
+        }
+        relaunch.spawn().map_err(|_| "update-restart".to_string())?;
     }
-    relaunch.spawn().map_err(|_| "update-restart".to_string())?;
     automation::close_ig(&app);
     app.exit(0);
     Ok(())
@@ -924,4 +936,121 @@ pub fn notify(app: AppHandle, title: String, body: String) -> CmdResult<()> {
         .body(body)
         .show()
         .map_err(|e| e.to_string())
+}
+
+// ---------------------------------------------------------------------------
+// Sauvegardes
+
+#[tauri::command]
+pub fn list_backups(state: State<'_, AppState>) -> Vec<BackupInfo> {
+    backup::list(&state.paths.data)
+}
+
+/// Remet une sauvegarde en place puis redémarre l'application (l'état actuel est sauvegardé avant).
+#[tauri::command]
+pub fn restore_backup(app: AppHandle, id: String) -> CmdResult<()> {
+    let state = app.state::<AppState>();
+    if state.session_running() || state.busy.load(Ordering::SeqCst) {
+        return Err("restore-busy".into());
+    }
+    // Le verrou reste pris jusqu'au redémarrage : plus rien n'écrit les fichiers entre-temps.
+    let _store = state.store.lock().map_err(lock_err)?;
+    backup::restore(&state.paths.data, &id, env!("CARGO_PKG_VERSION"))?;
+    automation::close_ig(&app);
+    app.restart();
+}
+
+// ---------------------------------------------------------------------------
+// Signaler un problème
+
+/// Informations techniques pour un ticket GitHub : version, système, réglages utiles et
+/// dernières erreurs. Rien de personnel (ni pseudo, ni adresse de liste, ni dossier).
+#[tauri::command]
+pub fn problem_report(state: State<'_, AppState>) -> CmdResult<String> {
+    let store = state.store.lock().map_err(lock_err)?;
+    let s = &store.settings;
+    let setup = match state.paths.setup {
+        Setup::Installed => "installed",
+        Setup::Scoop => "scoop",
+        Setup::Portable if state.paths.portable => "portable",
+        Setup::Portable => "portable (user data folder)",
+    };
+    let webview = tauri::webview_version().unwrap_or_else(|_| "?".into());
+    let enabled = s.sources.iter().filter(|x| x.enabled).count();
+    let connected = store.accounts.list.iter().filter(|a| a.connected).count();
+    let mut lines = vec![
+        format!("- Version: {} ({setup})", env!("CARGO_PKG_VERSION")),
+        format!("- System: {} {}", os_name(), std::env::consts::ARCH),
+        format!("- WebView: {webview}"),
+        format!("- Language: {}", s.language),
+        format!(
+            "- Session: {:?}, careful mode {}, {} s, limit {}, IG window {}",
+            s.mode,
+            if s.safe_mode { "on" } else { "off" },
+            s.seconds_per_giveaway,
+            s.session_limit,
+            if s.show_ig_window { "shown" } else { "hidden" },
+        ),
+        format!("- Sources: {enabled}/{} enabled", s.sources.len()),
+        format!(
+            "- Accounts: {} ({connected} signed in)",
+            store.accounts.list.len()
+        ),
+        format!("- Giveaways known: {}", store.giveaways.len()),
+    ];
+    if let Some(last) = &store.meta.last_session {
+        lines.push(format!(
+            "- Last session: {:?}, {}/{} entered, {} already, {} errors, {} to check{}{}",
+            last.mode,
+            last.participated,
+            last.total,
+            last.already,
+            last.errors,
+            last.pending.len(),
+            if last.stopped { ", stopped" } else { "" },
+            last.stop_reason
+                .as_deref()
+                .map(|r| format!(" ({r})"))
+                .unwrap_or_default(),
+        ));
+    }
+    let errors: Vec<String> = store
+        .history
+        .iter()
+        .rev()
+        .filter(|h| matches!(h.outcome, Outcome::Error | Outcome::Login))
+        .take(8)
+        .map(|h| {
+            format!(
+                "  - {} {:?} {} {}",
+                h.at.format("%Y-%m-%d %H:%M"),
+                h.outcome,
+                h.code,
+                h.message.as_deref().unwrap_or("")
+            )
+            .trim_end()
+            .to_string()
+        })
+        .collect();
+    if !errors.is_empty() {
+        lines.push("- Recent errors:".into());
+        lines.extend(errors);
+    }
+    Ok(lines.join("\n"))
+}
+
+/// Nom du système, sans rien d'identifiant.
+fn os_name() -> String {
+    if cfg!(target_os = "linux") {
+        if let Ok(text) = std::fs::read_to_string("/etc/os-release") {
+            if let Some(name) = text
+                .lines()
+                .find_map(|l| l.strip_prefix("PRETTY_NAME="))
+                .map(|v| v.trim_matches('"').to_string())
+            {
+                return name;
+            }
+        }
+    }
+    std::env::consts::OS.to_string()
 }

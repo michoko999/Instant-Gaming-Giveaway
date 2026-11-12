@@ -15,7 +15,7 @@
 
 <br />
 
-<a href="https://github.com/michoko999/Instant-Gaming-Giveaway/releases/latest"><img src="https://img.shields.io/badge/%E2%AC%87%20Herunterladen-GiveawayIG.exe-FFD27A?style=for-the-badge&labelColor=2A2D5A" alt="GiveawayIG.exe herunterladen" /></a>
+<a href="https://github.com/michoko999/Instant-Gaming-Giveaway/releases/latest"><img src="https://img.shields.io/badge/%E2%AC%87%20Herunterladen-Windows%20%C2%B7%20Linux-FFD27A?style=for-the-badge&labelColor=2A2D5A" alt="Giveaway IG herunterladen (Windows, Linux)" /></a>
 
 <sub>Portabel · ohne Installation · kostenlos und Open Source</sub>
 
@@ -89,8 +89,8 @@ Erscheint eine neue Version, lädt **Aktualisieren** sie aus den Releases dieses
 </td>
 <td valign="top">
 
-### 💼 Portabel, in 7 Sprachen
-Keine Installation: Alles liegt in einem Ordner `GiveawayIG-data` neben der ausführbaren Datei. Français, English, Español, Deutsch, Português, Italiano, Polski.
+### 💼 Installer oder portabel, in 7 Sprachen
+Mit einem Klick installieren (ohne Administratorrechte) oder portabel nutzen: Dann liegt alles in einem Ordner `GiveawayIG-data` neben der ausführbaren Datei. Deine Daten werden vor jeder neuen Version gesichert. Français, English, Español, Deutsch, Português, Italiano, Polski.
 
 </td>
 </tr>
@@ -131,8 +131,11 @@ Bei jeder Listenprüfung sucht die App deine Konten in der Gewinnerliste der Giv
 
 ## 🚀 Erste Schritte
 
-1. **Lade** `GiveawayIG.exe` (Windows) oder `GiveawayIG-x86_64.AppImage` (Linux) von der Seite [Releases](https://github.com/michoko999/Instant-Gaming-Giveaway/releases/latest) **herunter**.
-2. **Lege sie in einen eigenen Ordner**, zum Beispiel `Dokumente\GiveawayIG`. Deine Einstellungen werden daneben gespeichert.
+1. **Lade** von der Seite [Releases](https://github.com/michoko999/Instant-Gaming-Giveaway/releases/latest) **herunter**:
+   - Windows: **`GiveawayIG-setup.exe`** (Installer, ohne Administratorrechte, empfohlen) oder `GiveawayIG.exe` (portabel, nichts zu installieren);
+   - Linux: `GiveawayIG-x86_64.AppImage`;
+   - oder mit [Scoop](https://scoop.sh): `scoop bucket add giveaway-ig https://github.com/michoko999/Instant-Gaming-Giveaway`, dann `scoop install giveaway-ig`.
+2. **Installer**: Starte ihn, die App erscheint im Startmenü. **Portabel**: Lege die Datei in einen eigenen Ordner, zum Beispiel `Dokumente\GiveawayIG`; deine Einstellungen werden daneben gespeichert.
 3. **Starte sie.** Ein kurzer Assistent führt dich:
    - **Konto verbinden**: Die Instant-Gaming-Seite öffnet sich in der App; melde dich wie gewohnt an (dein Passwort tippst du auf deren Seite, nie in der App);
    - die App lädt die Listen und prüft, welche Giveaways offen sind;
@@ -182,7 +185,7 @@ Meldet ein Virenscanner die App trotzdem, öffne bitte ein [Issue](https://githu
 ## 🔒 Datenschutz
 
 - Dein Passwort tippst du auf der Seite von Instant Gaming, im eingebauten Fenster. Die App sieht und speichert es nie.
-- Die Sitzung (Cookies) bleibt auf deinem PC in `GiveawayIG-data\webview`. **Abmelden** in den Einstellungen löscht sie.
+- Die Sitzung (Cookies) bleibt auf deinem PC, im Datenordner der App (`GiveawayIG-data\webview` bei der portablen Version). **Abmelden** in den Einstellungen löscht sie.
 - Keine Telemetrie, kein Konto, keine Werbung. Die App verbindet sich nur mit:
 
 | Adresse | Wozu |

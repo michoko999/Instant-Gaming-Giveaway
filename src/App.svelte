@@ -64,6 +64,8 @@
             <button type="button" class="btn btn-sm btn-primary" onclick={installUpdate}>
               <Icon name="download" size={14} />{t('update.install')}
             </button>
+          {:else if app.update.manager === 'scoop'}
+            <span class="faint small">{t('update.scoop')} <code>scoop update giveaway-ig</code></span>
           {:else}
             <button type="button" class="btn btn-sm" onclick={() => app.update?.url && api.openExternal(app.update.url).catch(fail)}>
               {t('update.open')}

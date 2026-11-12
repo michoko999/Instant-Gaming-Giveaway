@@ -49,7 +49,7 @@ jobs:
       - run: cargo test --manifest-path src-tauri/Cargo.toml
 
   windows:
-    name: Exécutable Windows
+    name: Windows (exe et installateur)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -67,16 +67,21 @@ jobs:
 
       - run: npm ci
 
-      - name: Compilation
-        run: npx tauri build --no-bundle
+      - name: Compilation (exe et installateur)
+        run: npx tauri build --bundles nsis
 
-      - name: Exécutable portable et empreinte SHA-256
+      - name: Exécutable portable, installateur et empreintes SHA-256
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
           Copy-Item src-tauri/target/release/giveaway-ig.exe out/GiveawayIG.exe
-          $hash = (Get-FileHash out/GiveawayIG.exe -Algorithm SHA256).Hash.ToLower()
-          "$hash  GiveawayIG.exe" | Out-File -Encoding ascii out/SHA256SUMS.txt
+          $setup = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          Copy-Item $setup.FullName out/GiveawayIG-setup.exe
+          $lines = foreach ($name in 'GiveawayIG.exe', 'GiveawayIG-setup.exe') {
+            $hash = (Get-FileHash "out/$name" -Algorithm SHA256).Hash.ToLower()
+            "$hash  $name"
+          }
+          $lines | Out-File -Encoding ascii out/SHA256SUMS.txt
           Get-Content out/SHA256SUMS.txt
           "### GiveawayIG.exe`n`nSHA-256 : ``$hash``" >> $env:GITHUB_STEP_SUMMARY
 

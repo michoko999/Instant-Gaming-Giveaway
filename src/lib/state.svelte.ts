@@ -2,6 +2,7 @@
 import {
   api,
   events,
+  REPO_URL,
   type Account,
   type CheckProgress,
   type CheckScope,
@@ -553,4 +554,23 @@ export async function endMulti() {
     await refresh().catch(() => {});
   }
   app.screen = run.results.length > 0 ? 'recap' : 'home';
+}
+
+// ---------------------------------------------------------------------------
+// Signaler un problème
+
+/** Ouvre un ticket GitHub prérempli : l'utilisateur décrit le problème, l'application ajoute
+ * la version et les dernières erreurs (rien de personnel). Il relit tout avant d'envoyer. */
+export async function reportProblem() {
+  try {
+    const tech = await api.problemReport();
+    const body = [t('report.what'), '', '', t('report.expected'), '', '', t('report.tech'), '', tech, ''].join('\n');
+    const url =
+      `${REPO_URL}/issues/new?labels=bug` +
+      `&title=${encodeURIComponent(t('report.issueTitle'))}` +
+      `&body=${encodeURIComponent(body)}`;
+    await api.openExternal(url);
+  } catch (e) {
+    fail(e);
+  }
 }

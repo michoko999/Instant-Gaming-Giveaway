@@ -14,7 +14,7 @@ Until then, every release provides:
 
 ## What gets signed
 
-Only `GiveawayIG.exe` (Windows), built by the [Release workflow](../.github/workflows/release.yml) from this repository's `main` branch and tagged `v2.x.y`. The Linux AppImage is not Authenticode-signed; its hash and provenance attestation are published with each release. Nothing is built or signed from a personal computer, and no third-party binary is signed.
+Only the Windows files built by the [Release workflow](../.github/workflows/release.yml) from this repository's `main` branch and tagged `v2.x.y`: the portable executable `GiveawayIG.exe` and the installer `GiveawayIG-setup.exe` (with the program and uninstaller it contains). The Linux AppImage is not Authenticode-signed; its hash and provenance attestation are published with each release. Nothing is built or signed from a personal computer, and no third-party binary is signed.
 
 ## Team and roles
 
@@ -37,4 +37,4 @@ This program does not collect or send any personal data or telemetry, and has no
 | `raw.githubusercontent.com`, `jv-actu.com`, `ledemondujeu.com` | download the giveaway lists enabled in the settings (each source can be turned off) |
 | `api.github.com`, `github.com` | check whether a newer version exists and, only when the user clicks **Update**, download it (can be turned off in the settings) |
 
-Lists added by the user are downloaded from the addresses the user typed. The user's Instant Gaming password is typed on the Instant Gaming website and is never read or stored by the program. Settings, history and the browser session are stored locally, next to the executable in `GiveawayIG-data` (or in the user's local application data folder if that folder is read-only); deleting that folder removes everything. The program makes no system changes, does not start with the system and needs no installation, so there is nothing to uninstall.
+Lists added by the user are downloaded from the addresses the user typed. The user's Instant Gaming password is typed on the Instant Gaming website and is never read or stored by the program. Settings, history and the browser session are stored locally: next to the executable in `GiveawayIG-data` for the portable version, or in the user's local application data folder for the installed version (and when the portable folder is read-only). Before each new version, a copy of these files is kept in a `backups` subfolder. The program does not start with the system and makes no system-wide changes. The installer installs for the current user only (no administrator rights), adds a Start menu shortcut and registers a standard uninstaller in Windows Settings, which can also delete the application data. The portable version needs no installation: deleting its folder removes everything.

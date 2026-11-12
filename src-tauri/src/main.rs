@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod automation;
+mod backup;
 mod checker;
 mod commands;
 mod model;
@@ -24,8 +25,16 @@ fn main() {
         .setup(|app| {
             update::cleanup();
             let paths = AppPaths::resolve(app.handle());
+            update::cleanup_downloads(&paths.data);
             paths.apply_pending_reset();
-            let store = Store::load(&paths.data);
+            // Nouvelle version : copie des données avant de les lire (et peut-être de les convertir).
+            let version = env!("CARGO_PKG_VERSION");
+            backup::before_upgrade(&paths.data, version);
+            let mut store = Store::load(&paths.data);
+            if store.meta.app_version.as_deref() != Some(version) {
+                store.meta.app_version = Some(version.to_string());
+                let _ = store.save_meta();
+            }
             let webview_dir = paths.webview.clone();
             app.manage(AppState::new(paths, store));
 
@@ -50,6 +59,9 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_overview,
+            commands::list_backups,
+            commands::restore_backup,
+            commands::problem_report,
             commands::save_settings,
             commands::add_source,
             commands::remove_source,
