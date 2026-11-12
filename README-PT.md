@@ -151,7 +151,7 @@ Os regulamentos dos giveaways proíbem muitas vezes participações feitas por �
 O **modo prudente** (Definições → *Modo prudente (recomendado)*) reduz o risco sem o eliminar:
 
 - pelo menos 8 segundos entre giveaways e um número limitado de giveaways por sessão (40 por predefinição);
-- a sessão para logo que o site mostra um aviso ou pede várias verificações humanas, e após vários erros seguidos;
+- a sessão para logo que o site mostra um aviso ou pede uma verificação humana, e após vários erros seguidos;
 - os giveaways em que já participaste este mês não voltam a ser abertos;
 - as listas são verificadas sem a tua conta, a um ritmo moderado.
 
@@ -218,7 +218,7 @@ Sim: clica na tua conta no canto superior direito, depois em <b>Adicionar uma co
 <details>
 <summary><b>O que acontece quando aparece uma verificação (captcha)?</b></summary>
 <br />
-O giveaway é posto de lado e a sessão continua. No fim, o resumo mostra os giveaways que faltam terminar à mão, com um botão para abrir cada página.
+No modo prudente a sessão para aí; caso contrário, o giveaway é posto de lado e a sessão continua. Em ambos os casos, o resumo mostra os giveaways que faltam terminar à mão, com um botão para abrir cada página.
 </details>
 
 <details>

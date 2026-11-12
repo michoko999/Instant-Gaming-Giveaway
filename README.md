@@ -148,7 +148,7 @@ Giveaway rules often forbid entries made by “bots”. Automatic mode may there
 **Careful mode** (Settings → *Careful mode (recommended)*) lowers the risk without removing it:
 
 - at least 8 seconds between giveaways, and a limited number of giveaways per session (40 by default);
-- the session stops right away if the site shows a warning or asks for several human verifications, and after several errors in a row;
+- the session stops right away if the site shows a warning or asks for a human verification, and after several errors in a row;
 - giveaways already entered this month are not reopened;
 - list checks run without your account, at a moderate pace.
 
@@ -215,7 +215,7 @@ Yes: click your account at the top right, then <b>Add an account</b>, and sign i
 <details>
 <summary><b>What happens when a verification (captcha) appears?</b></summary>
 <br />
-The giveaway is set aside and the session continues. At the end, the summary lists the giveaways to finish by hand, with a button to open each page.
+In careful mode the session stops there; otherwise the giveaway is set aside and the session continues. In both cases, the summary lists the giveaways to finish by hand, with a button to open each page.
 </details>
 
 <details>

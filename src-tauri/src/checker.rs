@@ -1,5 +1,6 @@
 //! Vérification de l'état des concours en lisant leur page publique.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use futures::stream::{self, StreamExt};
@@ -36,7 +37,11 @@ const MARKERS: [(&str, &str, &str); 7] = [
 ];
 
 /// Nombre de pages vérifiées en même temps (volontairement modeste pour ne pas surcharger le site).
-pub const CONCURRENCY: usize = 4;
+pub const CONCURRENCY: usize = 2;
+/// Écart minimal entre deux pages demandées : pas de rafale de requêtes vers le site.
+pub const SPACING: Duration = Duration::from_millis(600);
+/// Attente maximale acceptée quand le site demande de patienter (`Retry-After`).
+const MAX_RETRY_AFTER_SECS: u64 = 30;
 
 pub fn giveaway_url(lang: &str, code: &str) -> String {
     format!("https://www.instant-gaming.com/{lang}/giveaway/{code}")
@@ -166,6 +171,36 @@ fn balanced_array(text: &str) -> Option<&str> {
 pub struct PageCheck {
     pub status: Status,
     pub winners: Vec<Winner>,
+    /// Le site demande de ralentir (trop de requêtes, page de vérification anti-robot) :
+    /// la vérification s'arrête là.
+    pub blocked: bool,
+}
+
+/// Page « trop de requêtes » ou défi anti-robot (Cloudflare) à la place de la page demandée.
+pub fn is_blocked(http_status: u16, body: &str) -> bool {
+    http_status == 429
+        || (matches!(http_status, 403 | 503)
+            && [
+                "cf-chl",
+                "cf_chl_opt",
+                "Just a moment...",
+                "Attention Required!",
+            ]
+            .iter()
+            .any(|marker| body.contains(marker)))
+}
+
+/// Délai demandé par l'en-tête `Retry-After` (en secondes), s'il est raisonnable.
+fn retry_after(response: &reqwest::Response) -> Option<u64> {
+    response
+        .headers()
+        .get(reqwest::header::RETRY_AFTER)?
+        .to_str()
+        .ok()?
+        .trim()
+        .parse::<u64>()
+        .ok()
+        .filter(|secs| *secs <= MAX_RETRY_AFTER_SECS)
 }
 
 pub async fn check_one(client: &Client, lang: &str, code: &str) -> PageCheck {
@@ -174,14 +209,30 @@ pub async fn check_one(client: &Client, lang: &str, code: &str) -> PageCheck {
         match client.get(&url).send().await {
             Ok(response) => {
                 let status = response.status().as_u16();
-                if status == 429 && attempt == 0 {
-                    tokio::time::sleep(Duration::from_secs(3)).await;
-                    continue;
+                if status == 429 {
+                    // Le site demande d'attendre : une seule nouvelle tentative, puis on arrête.
+                    match retry_after(&response) {
+                        Some(secs) if attempt == 0 => {
+                            tokio::time::sleep(Duration::from_secs(secs.max(2))).await;
+                            continue;
+                        }
+                        _ => {
+                            return PageCheck {
+                                blocked: true,
+                                ..PageCheck::default()
+                            }
+                        }
+                    }
                 }
                 return match response.text().await {
+                    Ok(body) if is_blocked(status, &body) => PageCheck {
+                        blocked: true,
+                        ..PageCheck::default()
+                    },
                     Ok(body) => PageCheck {
                         status: classify(status, &body),
                         winners: parse_winners(&body),
+                        blocked: false,
                     },
                     Err(_) => PageCheck::default(),
                 };
@@ -193,24 +244,61 @@ pub async fn check_one(client: &Client, lang: &str, code: &str) -> PageCheck {
     PageCheck::default()
 }
 
-/// Vérifie une liste de codes ; `on_result` est appelé après chaque page.
-pub async fn check_all<F>(client: &Client, lang: &str, codes: Vec<String>, mut on_result: F)
+/// Vérifie une liste de codes, à un rythme modéré ; `on_result` est appelé après chaque page.
+/// S'arrête dès que le site demande de ralentir, et renvoie alors `true`.
+pub async fn check_all<F>(client: &Client, lang: &str, codes: Vec<String>, mut on_result: F) -> bool
 where
     F: FnMut(&str, PageCheck),
 {
+    let blocked = AtomicBool::new(false);
+    let mut ticker = tokio::time::interval(SPACING);
+    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    let pace = tokio::sync::Mutex::new(ticker);
+    let (blocked_ref, pace_ref) = (&blocked, &pace);
     let mut results = stream::iter(codes.into_iter().map(|code| async move {
+        pace_ref.lock().await.tick().await;
+        if blocked_ref.load(Ordering::SeqCst) {
+            return (code, None);
+        }
         let page = check_one(client, lang, &code).await;
-        (code, page)
+        if page.blocked {
+            blocked_ref.store(true, Ordering::SeqCst);
+        }
+        (code, Some(page))
     }))
     .buffer_unordered(CONCURRENCY);
     while let Some((code, page)) = results.next().await {
-        on_result(&code, page);
+        match page {
+            Some(page) if !page.blocked => on_result(&code, page),
+            _ => {}
+        }
+        if blocked.load(Ordering::SeqCst) {
+            break;
+        }
     }
+    blocked.load(Ordering::SeqCst)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn recognises_a_request_to_slow_down() {
+        assert!(is_blocked(429, ""));
+        assert!(is_blocked(
+            403,
+            "<title>Just a moment...</title><script>window._cf_chl_opt={}</script>"
+        ));
+        assert!(is_blocked(503, "<div id=\"cf-chl-widget\"></div>"));
+        // Une page normale du site charge aussi un script Cloudflare : ce n'est pas un blocage.
+        assert!(!is_blocked(
+            200,
+            "<script src=\"/cdn-cgi/challenge-platform/scripts/jsd/main.js\"></script>"
+        ));
+        assert!(!is_blocked(404, "Not found"));
+        assert!(!is_blocked(403, "Forbidden"));
+    }
 
     #[test]
     fn classifies_pages() {

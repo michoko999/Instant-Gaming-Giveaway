@@ -151,7 +151,7 @@ I regolamenti dei giveaway spesso vietano le partecipazioni fatte da «bot». La
 La **modalità prudente** (Impostazioni → *Modalità prudente (consigliata)*) riduce il rischio senza eliminarlo:
 
 - almeno 8 secondi tra un giveaway e l'altro e un numero limitato di giveaway per sessione (40 di default);
-- la sessione si ferma subito se il sito mostra un avviso o chiede più verifiche umane, e dopo diversi errori di fila;
+- la sessione si ferma subito se il sito mostra un avviso o chiede una verifica umana, e dopo diversi errori di fila;
 - i giveaway a cui hai già partecipato questo mese non vengono riaperti;
 - le liste vengono controllate senza il tuo account, a un ritmo moderato.
 
@@ -218,7 +218,7 @@ Sì: clicca sul tuo account in alto a destra, poi su <b>Aggiungi un account</b>,
 <details>
 <summary><b>Cosa succede quando compare una verifica (captcha)?</b></summary>
 <br />
-Il giveaway viene messo da parte e la sessione continua. Alla fine, il riepilogo elenca i giveaway da completare a mano, con un pulsante per aprire ogni pagina.
+In modalità prudente la sessione si ferma lì; altrimenti il giveaway viene messo da parte e la sessione continua. In entrambi i casi, il riepilogo elenca i giveaway da completare a mano, con un pulsante per aprire ogni pagina.
 </details>
 
 <details>

@@ -151,7 +151,7 @@ Die Teilnahmebedingungen von Giveaways verbieten oft Teilnahmen durch „Bots“
 Der **vorsichtige Modus** (Einstellungen → *Vorsichtiger Modus (empfohlen)*) senkt das Risiko, ohne es zu beseitigen:
 
 - mindestens 8 Sekunden zwischen zwei Giveaways und eine begrenzte Anzahl pro Sitzung (standardmäßig 40);
-- die Sitzung stoppt sofort, wenn die Seite eine Warnung zeigt oder mehrere menschliche Überprüfungen verlangt, sowie nach mehreren Fehlern hintereinander;
+- die Sitzung stoppt sofort, wenn die Seite eine Warnung zeigt oder eine menschliche Überprüfung verlangt, sowie nach mehreren Fehlern hintereinander;
 - Giveaways, an denen du diesen Monat schon teilgenommen hast, werden nicht erneut geöffnet;
 - die Listen werden ohne dein Konto und in gemäßigtem Tempo geprüft.
 
@@ -218,7 +218,7 @@ Ja: Klicke oben rechts auf dein Konto, dann auf <b>Konto hinzufügen</b>, und me
 <details>
 <summary><b>Was passiert, wenn eine Überprüfung (Captcha) erscheint?</b></summary>
 <br />
-Das Giveaway wird zurückgestellt und die Sitzung läuft weiter. Am Ende zeigt die Zusammenfassung die Giveaways, die du von Hand abschließen musst, mit einem Button, um jede Seite zu öffnen.
+Im vorsichtigen Modus stoppt die Sitzung dort; sonst wird das Giveaway zurückgestellt und die Sitzung läuft weiter. In beiden Fällen zeigt die Zusammenfassung die Giveaways, die du von Hand abschließen musst, mit einem Button, um jede Seite zu öffnen.
 </details>
 
 <details>

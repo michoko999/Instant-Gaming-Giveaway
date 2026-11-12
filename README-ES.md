@@ -151,7 +151,7 @@ Las bases de los sorteos suelen prohibir las participaciones hechas por «bots»
 El **modo prudente** (Ajustes → *Modo prudente (recomendado)*) reduce el riesgo sin eliminarlo:
 
 - al menos 8 segundos entre sorteos y un número limitado de sorteos por sesión (40 por defecto);
-- la sesión se detiene en cuanto el sitio muestra un aviso o pide varias verificaciones humanas, y tras varios errores seguidos;
+- la sesión se detiene en cuanto el sitio muestra un aviso o pide una verificación humana, y tras varios errores seguidos;
 - los sorteos en los que ya participaste este mes no se vuelven a abrir;
 - las listas se comprueban sin tu cuenta, a un ritmo moderado.
 
@@ -218,7 +218,7 @@ Sí: pulsa en tu cuenta arriba a la derecha, luego en <b>Añadir una cuenta</b>,
 <details>
 <summary><b>¿Qué pasa cuando aparece una verificación (captcha)?</b></summary>
 <br />
-El sorteo se aparta y la sesión continúa. Al final, el resumen muestra los sorteos que quedan por terminar a mano, con un botón para abrir cada página.
+En modo prudente la sesión se detiene ahí; si no, el sorteo se aparta y la sesión continúa. En ambos casos, el resumen muestra los sorteos que quedan por terminar a mano, con un botón para abrir cada página.
 </details>
 
 <details>

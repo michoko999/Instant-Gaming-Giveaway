@@ -193,7 +193,8 @@ export async function updateLists(scope: CheckScope = 'unknown', withSync = true
     }
     app.checking = true;
     app.check = null;
-    await api.check(scope);
+    const report = await api.check(scope);
+    if (report.blocked) toast(t('check.blocked'), 'error');
   } catch (e) {
     fail(e);
   } finally {

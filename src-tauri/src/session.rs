@@ -16,8 +16,8 @@ use crate::state::AppState;
 const AUTO_TIMEOUT: Duration = Duration::from_secs(45);
 /// Pause après une participation détectée en mode manuel, avant de passer au suivant.
 const MANUAL_AFTER_SUCCESS: Duration = Duration::from_millis(1200);
-/// Mode prudent : arrêt après ce nombre de vérifications humaines dans la session.
-const SAFE_MAX_CAPTCHAS: usize = 2;
+/// Mode prudent : arrêt dès la première vérification « êtes-vous humain ? » demandée par le site.
+const SAFE_MAX_CAPTCHAS: usize = 1;
 /// Arrêt après ce nombre d'erreurs techniques d'affilée (site injoignable, page inattendue...).
 const MAX_CONSECUTIVE_ERRORS: usize = 3;
 
