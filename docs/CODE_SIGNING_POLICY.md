@@ -2,15 +2,12 @@
 
 ## Status
 
-The Windows executable is **not signed yet**. A free code signing request for open source projects has been prepared for [SignPath Foundation](https://signpath.org/).
-
-Once approved, this page will carry the required statement:
-*Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org/).*
-
-Until then, every release provides:
+The Windows files are **not code-signed** (no certificate for now). Instead, every release provides:
 
 - `SHA256SUMS.txt`, with the SHA-256 hash of each file (also shown in the release notes);
 - a GitHub build provenance attestation for each file (`gh attestation verify <file> --repo michoko999/Instant-Gaming-Giveaway`), which proves it was built by GitHub Actions from this repository.
+
+If a certificate is used one day, it will only sign the files described below.
 
 ## What gets signed
 
@@ -24,7 +21,7 @@ Only the Windows files built by the [Release workflow](../.github/workflows/rele
 | Reviewers (for outside contributions) | [michoko999](https://github.com/michoko999) |
 | Approvers (each signing request) | [michoko999](https://github.com/michoko999) |
 
-All team members use multi-factor authentication on GitHub (and on SignPath once set up). Outside contributions go through pull requests and are reviewed before being merged.
+All team members use multi-factor authentication on GitHub. Outside contributions go through pull requests and are reviewed before being merged.
 
 ## Privacy policy
 

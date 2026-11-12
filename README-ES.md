@@ -151,7 +151,7 @@ Las bases de los sorteos suelen prohibir las participaciones hechas por «bots»
 El **modo prudente** (Ajustes → *Modo prudente (recomendado)*) reduce el riesgo sin eliminarlo:
 
 - al menos 8 segundos entre sorteos y un número limitado de sorteos por sesión (40 por defecto);
-- la sesión se detiene en cuanto el sitio muestra un aviso o pide varias verificaciones humanas, y tras varios errores seguidos;
+- la sesión se detiene en cuanto el sitio muestra un aviso o pide una verificación humana, y tras varios errores seguidos;
 - los sorteos en los que ya participaste este mes no se vuelven a abrir;
 - las listas se comprueban sin tu cuenta, a un ritmo moderado.
 
@@ -165,7 +165,7 @@ La versión 2 se ha rehecho para que deje de parecer un programa malicioso:
 - **sin pulsaciones de teclado simuladas** ni ganchos de teclado: los clics ocurren dentro de la propia ventana de la aplicación;
 - nada se escribe en `%TEMP%`, no se inicia con Windows, no modifica el sistema.
 
-Mientras el ejecutable no esté firmado (está prevista una solicitud gratuita de firma de código a SignPath Foundation, consulta la [política de firma](docs/CODE_SIGNING_POLICY.md)), Windows SmartScreen puede mostrar «Windows protegió su PC» con una versión nueva. Es un aviso de reputación, no una detección de virus: si el archivo viene de la página de Releases y su huella coincide, pulsa **Más información** y luego **Ejecutar de todas formas**.
+El ejecutable no está firmado (consulta la [política de firma](docs/CODE_SIGNING_POLICY.md)), así que Windows SmartScreen puede mostrar «Windows protegió su PC» con una versión nueva. Es un aviso de reputación, no una detección de virus: si el archivo viene de la página de Releases y su huella coincide, pulsa **Más información** y luego **Ejecutar de todas formas**.
 
 <details>
 <summary><b>Comprobar que el archivo es auténtico</b></summary>
@@ -218,7 +218,7 @@ Sí: pulsa en tu cuenta arriba a la derecha, luego en <b>Añadir una cuenta</b>,
 <details>
 <summary><b>¿Qué pasa cuando aparece una verificación (captcha)?</b></summary>
 <br />
-El sorteo se aparta y la sesión continúa. Al final, el resumen muestra los sorteos que quedan por terminar a mano, con un botón para abrir cada página.
+En modo prudente la sesión se detiene ahí; si no, el sorteo se aparta y la sesión continúa. En ambos casos, el resumen muestra los sorteos que quedan por terminar a mano, con un botón para abrir cada página.
 </details>
 
 <details>

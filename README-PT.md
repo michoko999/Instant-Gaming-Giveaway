@@ -151,7 +151,7 @@ Os regulamentos dos giveaways proíbem muitas vezes participações feitas por �
 O **modo prudente** (Definições → *Modo prudente (recomendado)*) reduz o risco sem o eliminar:
 
 - pelo menos 8 segundos entre giveaways e um número limitado de giveaways por sessão (40 por predefinição);
-- a sessão para logo que o site mostra um aviso ou pede várias verificações humanas, e após vários erros seguidos;
+- a sessão para logo que o site mostra um aviso ou pede uma verificação humana, e após vários erros seguidos;
 - os giveaways em que já participaste este mês não voltam a ser abertos;
 - as listas são verificadas sem a tua conta, a um ritmo moderado.
 
@@ -165,7 +165,7 @@ A versão 2 foi refeita para deixar de parecer software malicioso:
 - **nenhuma tecla simulada** nem ganchos de teclado: os cliques acontecem dentro da própria janela da aplicação;
 - nada é escrito em `%TEMP%`, não arranca com o Windows, não altera o sistema.
 
-Enquanto o executável não estiver assinado (está previsto um pedido gratuito de assinatura de código à SignPath Foundation, vê a [política de assinatura](docs/CODE_SIGNING_POLICY.md)), o Windows SmartScreen pode mostrar «O Windows protegeu o seu PC» numa nova versão. É um aviso de reputação, não uma deteção de vírus: se o ficheiro vier da página de Releases e a impressão digital coincidir, clica em **Mais informações** e depois em **Executar mesmo assim**.
+O executável não está assinado (vê a [política de assinatura](docs/CODE_SIGNING_POLICY.md)), por isso o Windows SmartScreen pode mostrar «O Windows protegeu o seu PC» numa nova versão. É um aviso de reputação, não uma deteção de vírus: se o ficheiro vier da página de Releases e a impressão digital coincidir, clica em **Mais informações** e depois em **Executar mesmo assim**.
 
 <details>
 <summary><b>Verificar que o ficheiro é autêntico</b></summary>
@@ -218,7 +218,7 @@ Sim: clica na tua conta no canto superior direito, depois em <b>Adicionar uma co
 <details>
 <summary><b>O que acontece quando aparece uma verificação (captcha)?</b></summary>
 <br />
-O giveaway é posto de lado e a sessão continua. No fim, o resumo mostra os giveaways que faltam terminar à mão, com um botão para abrir cada página.
+No modo prudente a sessão para aí; caso contrário, o giveaway é posto de lado e a sessão continua. Em ambos os casos, o resumo mostra os giveaways que faltam terminar à mão, com um botão para abrir cada página.
 </details>
 
 <details>

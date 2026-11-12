@@ -151,7 +151,7 @@ Regulaminy giveawayów często zakazują zgłoszeń wysyłanych przez „boty”
 **Tryb ostrożny** (Ustawienia → *Tryb ostrożny (zalecany)*) zmniejsza to ryzyko, ale go nie usuwa:
 
 - co najmniej 8 sekund między giveawayami i ograniczona liczba giveawayów na sesję (domyślnie 40);
-- sesja zatrzymuje się od razu, gdy strona pokaże ostrzeżenie albo poprosi o kilka weryfikacji, a także po kilku błędach z rzędu;
+- sesja zatrzymuje się od razu, gdy strona pokaże ostrzeżenie albo poprosi o weryfikację, a także po kilku błędach z rzędu;
 - giveawaye, w których już wziąłeś udział w tym miesiącu, nie są ponownie otwierane;
 - listy są sprawdzane bez twojego konta, w umiarkowanym tempie.
 
@@ -165,7 +165,7 @@ Wersja 2 została zbudowana od nowa, żeby nie przypominać złośliwego oprogra
 - **żadnych symulowanych naciśnięć klawiszy** ani przechwytywania klawiatury: kliknięcia odbywają się we własnym oknie aplikacji;
 - żadnych zapisów w `%TEMP%`, żadnego autostartu z Windows, żadnych zmian w systemie.
 
-Dopóki plik nie jest podpisany (planowany jest bezpłatny wniosek o podpis kodu do SignPath Foundation, zobacz [zasady podpisywania](docs/CODE_SIGNING_POLICY.md)), Windows SmartScreen może przy nowej wersji pokazać komunikat „System Windows ochronił ten komputer”. To ostrzeżenie o reputacji, a nie wykrycie wirusa: jeśli plik pochodzi ze strony Releases i jego odcisk się zgadza, kliknij **Więcej informacji**, a potem **Uruchom mimo to**.
+Plik nie jest podpisany (zobacz [zasady podpisywania](docs/CODE_SIGNING_POLICY.md)), dlatego Windows SmartScreen może przy nowej wersji pokazać komunikat „System Windows ochronił ten komputer”. To ostrzeżenie o reputacji, a nie wykrycie wirusa: jeśli plik pochodzi ze strony Releases i jego odcisk się zgadza, kliknij **Więcej informacji**, a potem **Uruchom mimo to**.
 
 <details>
 <summary><b>Sprawdź, czy plik jest autentyczny</b></summary>
@@ -218,7 +218,7 @@ Tak: kliknij swoje konto w prawym górnym rogu, potem <b>Dodaj konto</b>, i zalo
 <details>
 <summary><b>Co się dzieje, gdy pojawi się weryfikacja (captcha)?</b></summary>
 <br />
-Giveaway zostaje odłożony, a sesja trwa dalej. Na koniec podsumowanie pokazuje giveawaye do dokończenia ręcznie, z przyciskiem otwierającym każdą stronę.
+W trybie ostrożnym sesja się na tym zatrzymuje; w przeciwnym razie giveaway zostaje odłożony, a sesja trwa dalej. W obu przypadkach podsumowanie pokazuje giveawaye do dokończenia ręcznie, z przyciskiem otwierającym każdą stronę.
 </details>
 
 <details>

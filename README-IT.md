@@ -151,7 +151,7 @@ I regolamenti dei giveaway spesso vietano le partecipazioni fatte da «bot». La
 La **modalità prudente** (Impostazioni → *Modalità prudente (consigliata)*) riduce il rischio senza eliminarlo:
 
 - almeno 8 secondi tra un giveaway e l'altro e un numero limitato di giveaway per sessione (40 di default);
-- la sessione si ferma subito se il sito mostra un avviso o chiede più verifiche umane, e dopo diversi errori di fila;
+- la sessione si ferma subito se il sito mostra un avviso o chiede una verifica umana, e dopo diversi errori di fila;
 - i giveaway a cui hai già partecipato questo mese non vengono riaperti;
 - le liste vengono controllate senza il tuo account, a un ritmo moderato.
 
@@ -165,7 +165,7 @@ La versione 2 è stata ricostruita per non sembrare più un malware:
 - **nessun tasto simulato** e nessun hook della tastiera: i clic avvengono dentro la finestra dell'app;
 - nessuna scrittura in `%TEMP%`, nessun avvio automatico con Windows, nessuna modifica al sistema.
 
-Finché l'eseguibile non è firmato (è prevista una richiesta gratuita di firma del codice a SignPath Foundation, vedi la [politica di firma](docs/CODE_SIGNING_POLICY.md)), Windows SmartScreen può mostrare «PC protetto da Windows» per una nuova versione. È un avviso di reputazione, non un rilevamento di virus: se il file proviene dalla pagina Releases e l'impronta corrisponde, clicca **Ulteriori informazioni** e poi **Esegui comunque**.
+L'eseguibile non è firmato (vedi la [politica di firma](docs/CODE_SIGNING_POLICY.md)), quindi Windows SmartScreen può mostrare «PC protetto da Windows» per una nuova versione. È un avviso di reputazione, non un rilevamento di virus: se il file proviene dalla pagina Releases e l'impronta corrisponde, clicca **Ulteriori informazioni** e poi **Esegui comunque**.
 
 <details>
 <summary><b>Verificare che il file sia autentico</b></summary>
@@ -218,7 +218,7 @@ Sì: clicca sul tuo account in alto a destra, poi su <b>Aggiungi un account</b>,
 <details>
 <summary><b>Cosa succede quando compare una verifica (captcha)?</b></summary>
 <br />
-Il giveaway viene messo da parte e la sessione continua. Alla fine, il riepilogo elenca i giveaway da completare a mano, con un pulsante per aprire ogni pagina.
+In modalità prudente la sessione si ferma lì; altrimenti il giveaway viene messo da parte e la sessione continua. In entrambi i casi, il riepilogo elenca i giveaway da completare a mano, con un pulsante per aprire ogni pagina.
 </details>
 
 <details>

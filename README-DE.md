@@ -151,7 +151,7 @@ Die Teilnahmebedingungen von Giveaways verbieten oft Teilnahmen durch „Bots“
 Der **vorsichtige Modus** (Einstellungen → *Vorsichtiger Modus (empfohlen)*) senkt das Risiko, ohne es zu beseitigen:
 
 - mindestens 8 Sekunden zwischen zwei Giveaways und eine begrenzte Anzahl pro Sitzung (standardmäßig 40);
-- die Sitzung stoppt sofort, wenn die Seite eine Warnung zeigt oder mehrere menschliche Überprüfungen verlangt, sowie nach mehreren Fehlern hintereinander;
+- die Sitzung stoppt sofort, wenn die Seite eine Warnung zeigt oder eine menschliche Überprüfung verlangt, sowie nach mehreren Fehlern hintereinander;
 - Giveaways, an denen du diesen Monat schon teilgenommen hast, werden nicht erneut geöffnet;
 - die Listen werden ohne dein Konto und in gemäßigtem Tempo geprüft.
 
@@ -165,7 +165,7 @@ Version 2 wurde neu gebaut, damit sie nicht mehr wie Schadsoftware aussieht:
 - **keine simulierten Tastatureingaben** und keine Tastatur-Hooks: Die Klicks passieren im eigenen Fenster der App;
 - keine Schreibzugriffe auf `%TEMP%`, kein Autostart mit Windows, keine Systemänderungen.
 
-Solange die Datei nicht signiert ist (ein kostenloser Antrag auf Codesignatur bei der SignPath Foundation ist geplant, siehe [Signaturrichtlinie](docs/CODE_SIGNING_POLICY.md)), kann Windows SmartScreen bei einer neuen Version „Der Computer wurde durch Windows geschützt“ anzeigen. Das ist eine Reputationswarnung, kein Virenfund: Stammt die Datei von der Releases-Seite und stimmt ihr Fingerabdruck, klicke auf **Weitere Informationen** und dann auf **Trotzdem ausführen**.
+Die Datei ist nicht signiert (siehe [Signaturrichtlinie](docs/CODE_SIGNING_POLICY.md)), daher kann Windows SmartScreen bei einer neuen Version „Der Computer wurde durch Windows geschützt“ anzeigen. Das ist eine Reputationswarnung, kein Virenfund: Stammt die Datei von der Releases-Seite und stimmt ihr Fingerabdruck, klicke auf **Weitere Informationen** und dann auf **Trotzdem ausführen**.
 
 <details>
 <summary><b>Echtheit der Datei prüfen</b></summary>
@@ -218,7 +218,7 @@ Ja: Klicke oben rechts auf dein Konto, dann auf <b>Konto hinzufügen</b>, und me
 <details>
 <summary><b>Was passiert, wenn eine Überprüfung (Captcha) erscheint?</b></summary>
 <br />
-Das Giveaway wird zurückgestellt und die Sitzung läuft weiter. Am Ende zeigt die Zusammenfassung die Giveaways, die du von Hand abschließen musst, mit einem Button, um jede Seite zu öffnen.
+Im vorsichtigen Modus stoppt die Sitzung dort; sonst wird das Giveaway zurückgestellt und die Sitzung läuft weiter. In beiden Fällen zeigt die Zusammenfassung die Giveaways, die du von Hand abschließen musst, mit einem Button, um jede Seite zu öffnen.
 </details>
 
 <details>

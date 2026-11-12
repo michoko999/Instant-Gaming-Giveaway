@@ -69,6 +69,8 @@ pub struct CheckReport {
     active: usize,
     ended: usize,
     unknown: usize,
+    /// Le site a demandé de ralentir : la vérification s'est arrêtée avant la fin.
+    blocked: bool,
 }
 
 #[derive(Serialize)]
@@ -212,14 +214,18 @@ pub async fn sync_lists(app: AppHandle) -> CmdResult<SyncReport> {
 
 /// Un concours terminé est revérifié au plus tard après ce délai : s'il revient, on le reprend.
 const RECHECK_ENDED_DAYS: i64 = 7;
+/// Un concours ouvert vérifié depuis moins longtemps n'est pas redemandé au site
+/// (une session repère de toute façon un concours qui vient de se terminer).
+const RECHECK_ACTIVE_HOURS: i64 = 12;
 
 /// `scope` : "unknown" (jamais vérifiés), "full" (tous, terminés compris) ou "all"
-/// (actifs, inconnus, et terminés pas revérifiés depuis une semaine).
+/// (inconnus, ouverts pas vérifiés depuis 12 h, terminés pas revérifiés depuis une semaine).
 #[tauri::command]
 pub async fn check_giveaways(app: AppHandle, scope: String) -> CmdResult<CheckReport> {
     let state = app.state::<AppState>();
     let _busy = BusyGuard::acquire(&state)?;
     let stale_before = Utc::now() - chrono::Duration::days(RECHECK_ENDED_DAYS);
+    let recent_after = Utc::now() - chrono::Duration::hours(RECHECK_ACTIVE_HOURS);
     let (lang, codes) = {
         let store = state.store.lock().map_err(lock_err)?;
         let codes: Vec<String> = store
@@ -229,7 +235,11 @@ pub async fn check_giveaways(app: AppHandle, scope: String) -> CmdResult<CheckRe
             .filter(|g| match scope.as_str() {
                 "unknown" => g.status == Status::Unknown,
                 "full" => true,
-                _ => g.status != Status::Ended || g.checked_at.map_or(true, |at| at < stale_before),
+                _ => match g.status {
+                    Status::Unknown => true,
+                    Status::Active => g.checked_at.map_or(true, |at| at < recent_after),
+                    Status::Ended => g.checked_at.map_or(true, |at| at < stale_before),
+                },
             })
             .map(|g| g.code.clone())
             .collect();
@@ -246,7 +256,7 @@ pub async fn check_giveaways(app: AppHandle, scope: String) -> CmdResult<CheckRe
         status: Status::Unknown,
     };
     let mut new_wins: Vec<Win> = Vec::new();
-    checker::check_all(&state.client, &lang, codes, |code, page| {
+    let blocked = checker::check_all(&state.client, &lang, codes, |code, page| {
         let status = page.status;
         progress.done += 1;
         match status {
@@ -285,6 +295,7 @@ pub async fn check_giveaways(app: AppHandle, scope: String) -> CmdResult<CheckRe
         active: progress.active,
         ended: progress.ended,
         unknown: progress.unknown,
+        blocked,
     })
 }
 

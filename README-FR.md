@@ -148,7 +148,7 @@ Le règlement des concours interdit souvent les participations faites par des «
 Le **mode prudent** (Paramètres → *Mode prudent (recommandé)*) réduit ce risque sans le supprimer :
 
 - au moins 8 secondes entre deux concours, et un nombre limité de concours par session (40 par défaut) ;
-- la session s'arrête tout de suite si le site affiche un avertissement ou demande plusieurs vérifications humaines, et après plusieurs erreurs d'affilée ;
+- la session s'arrête tout de suite si le site affiche un avertissement ou demande une vérification humaine, et après plusieurs erreurs d'affilée ;
 - les concours déjà faits ce mois-ci ne sont pas rouverts ;
 - la vérification des listes se fait sans ton compte, à un rythme modéré.
 
@@ -162,7 +162,7 @@ La version 2 a été reconstruite pour ne plus ressembler à un logiciel malveil
 - **aucune frappe clavier simulée** ni crochet clavier : les clics se font dans la fenêtre de l'application ;
 - aucune écriture dans `%TEMP%`, aucun démarrage automatique avec Windows, aucune modification du système.
 
-Tant que l'exécutable n'est pas signé (une demande de signature gratuite auprès de SignPath Foundation est prévue, voir la [politique de signature](docs/CODE_SIGNING_POLICY.md)), Windows SmartScreen peut afficher « Windows a protégé votre ordinateur » pour une nouvelle version. C'est un avertissement de réputation, pas une détection de virus : si le fichier vient de la page Releases et que son empreinte correspond, clique sur **Informations complémentaires** puis **Exécuter quand même**.
+L'exécutable n'est pas signé (voir la [politique de signature](docs/CODE_SIGNING_POLICY.md)) : Windows SmartScreen peut donc afficher « Windows a protégé votre ordinateur » pour une nouvelle version. C'est un avertissement de réputation, pas une détection de virus : si le fichier vient de la page Releases et que son empreinte correspond, clique sur **Informations complémentaires** puis **Exécuter quand même**.
 
 <details>
 <summary><b>Vérifier que le fichier est authentique</b></summary>
@@ -215,7 +215,7 @@ Oui : clique sur ton compte en haut à droite, puis sur <b>Ajouter un compte</b>
 <details>
 <summary><b>Que se passe-t-il quand une vérification (captcha) apparaît ?</b></summary>
 <br />
-Le concours est mis de côté et la session continue. À la fin, le récapitulatif liste les concours à terminer à la main, avec un bouton pour ouvrir chaque page.
+En mode prudent, la session s'arrête là ; sinon le concours est mis de côté et la session continue. Dans les deux cas, le récapitulatif liste les concours à terminer à la main, avec un bouton pour ouvrir chaque page.
 </details>
 
 <details>

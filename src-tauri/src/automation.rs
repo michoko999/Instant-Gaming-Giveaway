@@ -143,7 +143,21 @@ const SCRIPT_TEMPLATE: &str = r#"(() => {
     if (loggedOut()) { report('login'); return; }
     if (participating()) { report('already'); return; }
     if (MODE === 'watch') {
-      for (;;) { await sleep(400); if (participating()) { report('participated'); return; } }
+      // Mode manuel : le bouton est amené au centre et entouré, c'est toi qui cliques.
+      let shown = false;
+      for (;;) {
+        if (!shown) {
+          const b = findButton();
+          if (b) {
+            shown = true;
+            b.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            b.style.outline = '3px solid #FFD27A';
+            b.style.outlineOffset = '4px';
+          }
+        }
+        await sleep(400);
+        if (participating()) { report('participated'); return; }
+      }
     }
     const button = findButton();
     if (!button) { report('nobutton'); return; }

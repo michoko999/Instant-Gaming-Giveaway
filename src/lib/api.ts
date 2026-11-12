@@ -201,6 +201,8 @@ export interface CheckReport {
   active: number;
   ended: number;
   unknown: number;
+  /** Le site a demandé de ralentir : vérification arrêtée avant la fin. */
+  blocked: boolean;
 }
 
 export interface ImportReport {

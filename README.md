@@ -148,7 +148,7 @@ Giveaway rules often forbid entries made by “bots”. Automatic mode may there
 **Careful mode** (Settings → *Careful mode (recommended)*) lowers the risk without removing it:
 
 - at least 8 seconds between giveaways, and a limited number of giveaways per session (40 by default);
-- the session stops right away if the site shows a warning or asks for several human verifications, and after several errors in a row;
+- the session stops right away if the site shows a warning or asks for a human verification, and after several errors in a row;
 - giveaways already entered this month are not reopened;
 - list checks run without your account, at a moderate pace.
 
@@ -162,7 +162,7 @@ Version 2 was rebuilt so it no longer looks like malware:
 - **no simulated keystrokes** and no keyboard hooks: clicks happen inside the app's own window;
 - no writes to `%TEMP%`, no auto-start with Windows, no system changes.
 
-Until the executable is signed (a free code-signing request to SignPath Foundation is planned, see the [code signing policy](docs/CODE_SIGNING_POLICY.md)), Windows SmartScreen may show “Windows protected your PC” for a new version. It is a reputation warning, not a virus detection: if the file comes from the Releases page and its fingerprint matches, click **More info** then **Run anyway**.
+The executable is not code-signed (see the [code signing policy](docs/CODE_SIGNING_POLICY.md)), so Windows SmartScreen may show “Windows protected your PC” for a new version. It is a reputation warning, not a virus detection: if the file comes from the Releases page and its fingerprint matches, click **More info** then **Run anyway**.
 
 <details>
 <summary><b>Check that the file is genuine</b></summary>
@@ -215,7 +215,7 @@ Yes: click your account at the top right, then <b>Add an account</b>, and sign i
 <details>
 <summary><b>What happens when a verification (captcha) appears?</b></summary>
 <br />
-The giveaway is set aside and the session continues. At the end, the summary lists the giveaways to finish by hand, with a button to open each page.
+In careful mode the session stops there; otherwise the giveaway is set aside and the session continues. In both cases, the summary lists the giveaways to finish by hand, with a button to open each page.
 </details>
 
 <details>
