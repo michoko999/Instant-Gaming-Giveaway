@@ -1,0 +1,82 @@
+name: Winget
+
+# Envoie une version publiée sur winget (dépôt microsoft/winget-pkgs) : `winget install Michoko999.GiveawayIG`.
+# Lancé tout seul par « Release » après une publication, ou à la main : Actions → Winget → Run workflow.
+#
+# À faire une seule fois : créer un jeton GitHub « classic » avec la case `public_repo`
+# et l'enregistrer dans les secrets du dépôt sous le nom WINGET_TOKEN. Sans ce secret,
+# l'envoi est simplement ignoré (la release, elle, est publiée normalement).
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+    secrets:
+      WINGET_TOKEN:
+        required: false
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version à envoyer, par exemple v2.3.0 (vide = la dernière publiée)"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  winget:
+    name: Envoi sur winget
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - name: Jeton winget présent ?
+        id: token
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrEmpty($env:WINGET_TOKEN)) {
+            "::warning::Secret WINGET_TOKEN absent : envoi sur winget ignoré."
+            "ok=false" >> $env:GITHUB_OUTPUT
+          } else {
+            "ok=true" >> $env:GITHUB_OUTPUT
+          }
+
+      - uses: actions/checkout@v7
+        if: steps.token.outputs.ok == 'true'
+        with:
+          sparse-checkout: .github/winget
+
+      - name: Fichiers winget de la version
+        if: steps.token.outputs.ok == 'true'
+        shell: pwsh
+        run: |
+          $tag = if ($env:TAG) { $env:TAG } else { gh api "repos/$env:REPO/releases/latest" --jq .tag_name }
+          $release = gh api "repos/$env:REPO/releases/tags/$tag" | ConvertFrom-Json
+          if ($release.draft) { throw "La release $tag est un brouillon." }
+          $sums = $release.assets | Where-Object name -eq 'SHA256SUMS.txt'
+          if (-not $sums -or -not ($release.assets | Where-Object name -eq 'GiveawayIG-setup.exe')) {
+            throw "Il manque GiveawayIG-setup.exe ou SHA256SUMS.txt dans la release $tag."
+          }
+          gh api -H "Accept: application/octet-stream" "repos/$env:REPO/releases/assets/$($sums.id)" > sums.txt
+          $line = Get-Content sums.txt | Where-Object { $_ -match '\sGiveawayIG-setup\.exe\s*$' } | Select-Object -First 1
+          $hash = ($line -split '\s+')[0]
+          $date = ([datetime]$release.published_at).ToUniversalTime().ToString('yyyy-MM-dd')
+          python .github/winget/manifests.py $tag $hash $date $env:REPO manifests
+          if ($LASTEXITCODE -ne 0) { throw "Fichiers winget non créés." }
+          Get-ChildItem manifests | ForEach-Object { "--- $($_.Name)"; Get-Content $_.FullName }
+          "### Winget : $tag" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Envoi à microsoft/winget-pkgs
+        if: steps.token.outputs.ok == 'true'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          .\wingetcreate.exe submit --token $env:WINGET_TOKEN manifests
+          if ($LASTEXITCODE -ne 0) { throw "wingetcreate a échoué (code $LASTEXITCODE)." }

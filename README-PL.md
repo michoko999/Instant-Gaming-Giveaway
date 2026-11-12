@@ -165,7 +165,7 @@ Wersja 2 została zbudowana od nowa, żeby nie przypominać złośliwego oprogra
 - **żadnych symulowanych naciśnięć klawiszy** ani przechwytywania klawiatury: kliknięcia odbywają się we własnym oknie aplikacji;
 - żadnych zapisów w `%TEMP%`, żadnego autostartu z Windows, żadnych zmian w systemie.
 
-Dopóki plik nie jest podpisany (planowany jest bezpłatny wniosek o podpis kodu do SignPath Foundation, zobacz [zasady podpisywania](docs/CODE_SIGNING_POLICY.md)), Windows SmartScreen może przy nowej wersji pokazać komunikat „System Windows ochronił ten komputer”. To ostrzeżenie o reputacji, a nie wykrycie wirusa: jeśli plik pochodzi ze strony Releases i jego odcisk się zgadza, kliknij **Więcej informacji**, a potem **Uruchom mimo to**.
+Plik nie jest podpisany (zobacz [zasady podpisywania](docs/CODE_SIGNING_POLICY.md)), dlatego Windows SmartScreen może przy nowej wersji pokazać komunikat „System Windows ochronił ten komputer”. To ostrzeżenie o reputacji, a nie wykrycie wirusa: jeśli plik pochodzi ze strony Releases i jego odcisk się zgadza, kliknij **Więcej informacji**, a potem **Uruchom mimo to**.
 
 <details>
 <summary><b>Sprawdź, czy plik jest autentyczny</b></summary>

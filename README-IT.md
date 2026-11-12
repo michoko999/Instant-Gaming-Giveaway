@@ -165,7 +165,7 @@ La versione 2 è stata ricostruita per non sembrare più un malware:
 - **nessun tasto simulato** e nessun hook della tastiera: i clic avvengono dentro la finestra dell'app;
 - nessuna scrittura in `%TEMP%`, nessun avvio automatico con Windows, nessuna modifica al sistema.
 
-Finché l'eseguibile non è firmato (è prevista una richiesta gratuita di firma del codice a SignPath Foundation, vedi la [politica di firma](docs/CODE_SIGNING_POLICY.md)), Windows SmartScreen può mostrare «PC protetto da Windows» per una nuova versione. È un avviso di reputazione, non un rilevamento di virus: se il file proviene dalla pagina Releases e l'impronta corrisponde, clicca **Ulteriori informazioni** e poi **Esegui comunque**.
+L'eseguibile non è firmato (vedi la [politica di firma](docs/CODE_SIGNING_POLICY.md)), quindi Windows SmartScreen può mostrare «PC protetto da Windows» per una nuova versione. È un avviso di reputazione, non un rilevamento di virus: se il file proviene dalla pagina Releases e l'impronta corrisponde, clicca **Ulteriori informazioni** e poi **Esegui comunque**.
 
 <details>
 <summary><b>Verificare che il file sia autentico</b></summary>

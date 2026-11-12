@@ -250,3 +250,15 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "Scoop : giveaway-ig ${TAG}"
           git push origin HEAD:main
+
+  # Envoi sur winget (ignoré tant que le secret WINGET_TOKEN n'existe pas).
+  winget:
+    name: Winget
+    needs: [prepare, publish]
+    if: github.event_name == 'workflow_dispatch' && !inputs.draft
+    permissions:
+      contents: read
+    uses: ./.github/workflows/winget.yml
+    with:
+      tag: ${{ needs.prepare.outputs.tag }}
+    secrets: inherit

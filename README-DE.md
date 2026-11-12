@@ -165,7 +165,7 @@ Version 2 wurde neu gebaut, damit sie nicht mehr wie Schadsoftware aussieht:
 - **keine simulierten Tastatureingaben** und keine Tastatur-Hooks: Die Klicks passieren im eigenen Fenster der App;
 - keine Schreibzugriffe auf `%TEMP%`, kein Autostart mit Windows, keine Systemänderungen.
 
-Solange die Datei nicht signiert ist (ein kostenloser Antrag auf Codesignatur bei der SignPath Foundation ist geplant, siehe [Signaturrichtlinie](docs/CODE_SIGNING_POLICY.md)), kann Windows SmartScreen bei einer neuen Version „Der Computer wurde durch Windows geschützt“ anzeigen. Das ist eine Reputationswarnung, kein Virenfund: Stammt die Datei von der Releases-Seite und stimmt ihr Fingerabdruck, klicke auf **Weitere Informationen** und dann auf **Trotzdem ausführen**.
+Die Datei ist nicht signiert (siehe [Signaturrichtlinie](docs/CODE_SIGNING_POLICY.md)), daher kann Windows SmartScreen bei einer neuen Version „Der Computer wurde durch Windows geschützt“ anzeigen. Das ist eine Reputationswarnung, kein Virenfund: Stammt die Datei von der Releases-Seite und stimmt ihr Fingerabdruck, klicke auf **Weitere Informationen** und dann auf **Trotzdem ausführen**.
 
 <details>
 <summary><b>Echtheit der Datei prüfen</b></summary>

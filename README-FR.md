@@ -162,7 +162,7 @@ La version 2 a été reconstruite pour ne plus ressembler à un logiciel malveil
 - **aucune frappe clavier simulée** ni crochet clavier : les clics se font dans la fenêtre de l'application ;
 - aucune écriture dans `%TEMP%`, aucun démarrage automatique avec Windows, aucune modification du système.
 
-Tant que l'exécutable n'est pas signé (une demande de signature gratuite auprès de SignPath Foundation est prévue, voir la [politique de signature](docs/CODE_SIGNING_POLICY.md)), Windows SmartScreen peut afficher « Windows a protégé votre ordinateur » pour une nouvelle version. C'est un avertissement de réputation, pas une détection de virus : si le fichier vient de la page Releases et que son empreinte correspond, clique sur **Informations complémentaires** puis **Exécuter quand même**.
+L'exécutable n'est pas signé (voir la [politique de signature](docs/CODE_SIGNING_POLICY.md)) : Windows SmartScreen peut donc afficher « Windows a protégé votre ordinateur » pour une nouvelle version. C'est un avertissement de réputation, pas une détection de virus : si le fichier vient de la page Releases et que son empreinte correspond, clique sur **Informations complémentaires** puis **Exécuter quand même**.
 
 <details>
 <summary><b>Vérifier que le fichier est authentique</b></summary>

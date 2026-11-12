@@ -162,7 +162,7 @@ Version 2 was rebuilt so it no longer looks like malware:
 - **no simulated keystrokes** and no keyboard hooks: clicks happen inside the app's own window;
 - no writes to `%TEMP%`, no auto-start with Windows, no system changes.
 
-Until the executable is signed (a free code-signing request to SignPath Foundation is planned, see the [code signing policy](docs/CODE_SIGNING_POLICY.md)), Windows SmartScreen may show “Windows protected your PC” for a new version. It is a reputation warning, not a virus detection: if the file comes from the Releases page and its fingerprint matches, click **More info** then **Run anyway**.
+The executable is not code-signed (see the [code signing policy](docs/CODE_SIGNING_POLICY.md)), so Windows SmartScreen may show “Windows protected your PC” for a new version. It is a reputation warning, not a virus detection: if the file comes from the Releases page and its fingerprint matches, click **More info** then **Run anyway**.
 
 <details>
 <summary><b>Check that the file is genuine</b></summary>

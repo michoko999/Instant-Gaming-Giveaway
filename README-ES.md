@@ -165,7 +165,7 @@ La versión 2 se ha rehecho para que deje de parecer un programa malicioso:
 - **sin pulsaciones de teclado simuladas** ni ganchos de teclado: los clics ocurren dentro de la propia ventana de la aplicación;
 - nada se escribe en `%TEMP%`, no se inicia con Windows, no modifica el sistema.
 
-Mientras el ejecutable no esté firmado (está prevista una solicitud gratuita de firma de código a SignPath Foundation, consulta la [política de firma](docs/CODE_SIGNING_POLICY.md)), Windows SmartScreen puede mostrar «Windows protegió su PC» con una versión nueva. Es un aviso de reputación, no una detección de virus: si el archivo viene de la página de Releases y su huella coincide, pulsa **Más información** y luego **Ejecutar de todas formas**.
+El ejecutable no está firmado (consulta la [política de firma](docs/CODE_SIGNING_POLICY.md)), así que Windows SmartScreen puede mostrar «Windows protegió su PC» con una versión nueva. Es un aviso de reputación, no una detección de virus: si el archivo viene de la página de Releases y su huella coincide, pulsa **Más información** y luego **Ejecutar de todas formas**.
 
 <details>
 <summary><b>Comprobar que el archivo es auténtico</b></summary>
